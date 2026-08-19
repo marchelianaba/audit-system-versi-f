@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roadmap INTEGRAL FREE — Asisten Perumusan KKSA</title>
+<style>
+  :root{
+    --primary:#0369a1; --primary-dark:#075985; --primary-soft:#f0f9ff;
+    --ink:#1e293b; --ink-2:#475569; --muted:#94a3b8;
+    --surface:#fff; --bg:#f1f5f9; --line:#e2e8f0;
+    --good:#047857; --good-bg:#ecfdf5; --good-line:#a7f3d0;
+    --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
+    --crit:#b91c1c; --crit-bg:#fef2f2; --crit-line:#fecaca;
+    --plan:#1d4ed8; --plan-bg:#eff6ff; --plan-line:#bfdbfe;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.6;padding:0 0 80px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  header{background:linear-gradient(135deg,#f0f9ff 0%,#fff 55%,#eef2ff 100%);
+         border-bottom:1px solid var(--line);padding:38px 0 28px;margin-bottom:24px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--primary);font-weight:700;margin-bottom:8px}
+  h1{font-size:30px;line-height:1.2;color:var(--primary-dark);margin-bottom:10px}
+  .lead{font-size:15.5px;color:var(--ink)}
+  h2{font-size:20px;color:var(--primary-dark);margin:34px 0 6px;padding-top:18px;border-top:2px solid var(--line)}
+  h3{font-size:15px;color:var(--ink);margin:20px 0 8px}
+  p{margin:10px 0;color:var(--ink-2);font-size:14.5px}
+  strong{color:var(--ink)}
+  code{background:#f1f5f9;border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#334155}
+  ul,ol{margin:10px 0 10px 22px} li{font-size:14.5px;color:var(--ink-2);margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--surface);
+        border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{background:var(--primary-soft);color:var(--primary-dark);text-align:left;padding:10px 13px;
+     font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:10px 13px;border-top:1px solid var(--line);color:var(--ink-2);vertical-align:top}
+  td strong{color:var(--ink)} .scroll{overflow-x:auto}
+  .callout{border-radius:11px;padding:16px 20px;margin:16px 0;border:1px solid}
+  .c-good{background:var(--good-bg);border-color:var(--good-line)}
+  .c-warn{background:var(--warn-bg);border-color:var(--warn-line)}
+  .c-crit{background:var(--crit-bg);border-color:var(--crit-line)}
+  .c-plan{background:var(--plan-bg);border-color:var(--plan-line)}
+  .callout h3{margin-top:0} .c-good h3{color:var(--good)} .c-warn h3{color:var(--warn)}
+  .c-crit h3{color:var(--crit)} .c-plan h3{color:var(--plan)}
+  .callout p,.callout li{font-size:14px}
+  .fase{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--line);
+        border-radius:0 12px 12px 0;padding:16px 20px;margin:14px 0}
+  .fase.done{border-left-color:var(--good)} .fase.run{border-left-color:var(--warn)}
+  .fase.next{border-left-color:var(--muted)}
+  .fase .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .fase h3{margin:0;font-size:16.5px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .b-done{background:var(--good-bg);color:var(--good)}
+  .b-run{background:var(--warn-bg);color:var(--warn)}
+  .b-next{background:#f1f5f9;color:var(--muted)}
+  .dod{margin-top:10px;background:#f8fafc;border:1px dashed var(--line);border-radius:8px;
+       padding:8px 12px;font-size:13px;color:var(--ink-2)}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0}
+  .fbox{flex:1;min-width:130px;background:var(--primary-soft);border:1.5px solid #bae6fd;
+        border-radius:9px;padding:11px;text-align:center}
+  .fbox b{display:block;font-size:13px;color:var(--primary-dark)} .fbox span{font-size:11.5px;color:var(--ink-2)}
+  .arr{font-size:16px;color:var(--primary);font-weight:700}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Roadmap · Repositori <code>integral-free</code></div>
+    <h1>INTEGRAL FREE</h1>
+    <p class="lead">Turunan ramping dari <code>v10.0-baseline</code> untuk <strong>Inspektorat I, III, dan IV</strong>,
+       diintegrasikan ke <code>simwasv2.komdigi.go.id</code>. Bukan untuk K/L lain.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="callout c-plan">
+    <h3>⭐ Posisi produk — ASISTEN PERUMUSAN KKSA</h3>
+    <p style="margin-bottom:0">FREE <strong>bukan</strong> "agen yang mencari temuan dari tumpukan dokumen".
+       Auditor melakukan analisis awalnya sendiri, lalu mengunggah <strong>catatan/temuan awal dalam format apa pun</strong>;
+       agen membantu <strong>merumuskannya menjadi KKSA &amp; laporan yang baik dan sesuai standar</strong>.
+       Kemampuan analisis berat sengaja dikurangi — nilai tambahnya dipindah ke
+       <strong>kelengkapan unsur, ketepatan sitasi pasal, dan kepatuhan format</strong>.</p>
+  </div>
+
+  <h2>Hubungan dengan artefak lain</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>Artefak</th><th>Peran</th></tr>
+    <tr><td>❄ <strong>BEKU</strong> — <code>v10.0-baseline</code> / <code>v10.0.1</code></td>
+        <td>induk kedua turunan · <strong>pembanding mutu</strong> saat menilai FREE</td></tr>
+    <tr><td>⚡ <strong>FULL</strong> — repo <code>audit-system-v10</code></td>
+        <td>produk <strong>terpisah</strong> — tidak lagi menjadi hulu</td></tr>
+    <tr><td>🌐 <strong>FREE</strong> — repo ini</td>
+        <td><strong>berdiri sendiri</strong> — boleh menambah kemampuannya sendiri</td></tr>
+  </table>
+  </div>
+  <div class="callout c-crit">
+    <h3>⚠ PISAH PENUH sejak 5 Agustus 2026</h3>
+    <p style="margin-bottom:0">Aturan lama <em>“FREE hanya mencabut, tarik satu arah dari hulu”</em>
+       <strong>DICABUT</strong> atas keputusan pengguna. Remote <code>upstream</code> sudah dilepas.
+       FREE kini boleh <strong>menambah kemampuan sendiri</strong>; FULL dikerjakan di sesi/repo terpisah.
+       Konsekuensinya: perbaikan mesin di FULL <strong>tidak lagi mengalir otomatis</strong> ke sini —
+       bila ada yang layak dibawa, ambil manual dan catat asalnya.</p>
+  </div>
+
+  <h2>Fase</h2>
+
+  <div class="fase done">
+    <div class="head"><h3>Fase 0 — Fondasi</h3><span class="badge b-done">SELESAI</span></div>
+    <ul>
+      <li><strong>Fork dari titik beku</strong> <code>v10.0-baseline</code>, <strong>riwayat git dipertahankan</strong>
+          (bukan squash). Remote <code>upstream</code> dulu terpasang untuk tarik satu arah —
+          <strong>sudah dilepas 5 Agu 2026</strong> saat kedua produk dipisah penuh.</li>
+      <li><strong>Isolasi antar-Inspektorat</strong> terbawa dari BEKU: <code>app/tenancy.py</code>
+          (404 bukan 403, fail-closed), kolom <code>inspektorat</code> di User &amp; Penugasan, 11 berkas rute disaring.</li>
+      <li><strong>Injeksi wiki → skill (snapshot beku)</strong> — <strong>248 berkas</strong>:
+          96 pattern · 114 konteks · 38 template. Skrip <code>inject_wiki_to_skills.py</code>
+          (<code>--apply</code>/<code>--revert</code>) ikut terbawa di repo ini; jalankan ulang bila ingin menyegarkan.</li>
+    </ul>
+  </div>
+
+  <div class="fase done">
+    <div class="head"><h3>Fase 1 — Ramping: murni alur penugasan</h3><span class="badge b-done">SELESAI</span></div>
+    <ul>
+      <li>Tool agen: <code>WIKI_TOOLS</code> + <code>read_preload_context</code> dicabut → <strong>28 tool, nol tool wiki</strong>.</li>
+      <li>7 modul dihapus (knowledge, chat, preload_context, wiki_promote, wiki_writeback, knowledge_browse, wiki_tools).</li>
+      <li>Frontend: menu <strong>Knowledge</strong> (5 submenu) + <strong>Chat AI</strong> dihapus; data <code>knowledge/wiki/</code> tidak disertakan.</li>
+      <li>Bedah <code>routes/penugasan.py</code>: auto-build preload dihapus; <code>sasaran/templates</code> disisakan mode <code>historis</code>.</li>
+      <li><strong>Varian doktrin FREE</strong> — pattern &amp; konteks dibaca lewat <code>read_skill_reference</code>.
+          <strong>5/5 jalur terverifikasi ada &amp; terbaca.</strong></li>
+      <li><strong>Perbaikan keamanan</strong> (ditemukan saat pengerjaan; juga masuk FULL <code>v10.0.1</code>):
+          query <em>pilih-kolom</em> tak tersaring + <strong>cache dashboard global</strong> → keduanya ditutup.</li>
+    </ul>
+
+    <h3>Putaran kedua — CACM, graduasi, tulis-skill (4 Agustus 2026)</h3>
+    <p>Keputusan: FREE <strong>murni alur penugasan</strong>. Tiga hal berikut dicabut
+       seluruhnya, bukan disembunyikan:</p>
+    <div class="scroll">
+    <table>
+      <tr><th>Dicabut</th><th>Cakupan</th><th>Alasan</th></tr>
+      <tr><td><strong>CACM / EWS SIRUP</strong></td>
+          <td>4 modul + rute + 4 model DB + status <code>USULAN_CACM</code> + panel EWS beranda +
+              halaman <code>/cacm</code> &amp; <code>/cacm/kriteria</code> + menu + 24 metode klien + kriteria YAML</td>
+          <td>pengawasan berkelanjutan berbasis sinyal — bukan pelaksanaan penugasan</td></tr>
+      <tr><td><strong>Graduasi</strong></td>
+          <td><code>app/graduasi.py</code>, rutenya, meta-skill, 5 metode klien</td>
+          <td>menyuling skill baru dari pola temuan = penyusunan pengetahuan; FREE tak ikut update wiki</td></tr>
+      <tr><td><strong>Tulis skill lewat API</strong></td>
+          <td><code>PUT /skills/{slug}</code>, <code>POST /skills</code> → <strong>405</strong></td>
+          <td>skill FREE dipatok allowlist 7 buah, diperbarui lewat <strong>pengembang</strong> (commit repo)</td></tr>
+    </table>
+    </div>
+    <p>Ikut dibersihkan — <strong>sisa mati dari putaran pertama</strong> yang masih memanggil
+       endpoint yang sudah tiada (404 saat dipakai pengguna): pemilih template KP/PKP wiki di
+       halaman penugasan, panel Konteks Pra-Loaded, dan 27 metode klien wiki/knowledge/chat/preload.</p>
+    <div class="callout c-good" style="margin-bottom:0">
+      <h3>Hasil &amp; verifikasi</h3>
+      <p style="margin-bottom:0"><strong>48 endpoint</strong> tersisa, nol ber-prefiks
+         <code>cacm</code>/<code>graduasi</code>/<code>knowledge</code>/<code>chat</code>/<code>preload</code> ·
+         <strong>39 tool agen</strong> tanpa satu pun tool wiki/CACM · <strong>8 rute frontend</strong>
+         (Dashboard · Penugasan · Penugasan/[id] · Tindak Lanjut · Feedback Agen · Login).<br>
+         Diuji: <strong>84 panggilan GET × 3 peran → 0 galat 5xx</strong> · alur penugasan utuh
+         (buat penugasan 201, antrean HITL 2 temuan, 7 skill) · <code>tsc --noEmit</code> bersih ·
+         <code>next build</code> sukses.</p>
+    </div>
+  </div>
+
+  <div class="fase done">
+    <div class="head"><h3>Fase 2 — Skema Asisten KKSA</h3><span class="badge b-done">SELESAI</span></div>
+    <p>Inti nilai FREE. Rincian desain: <code>USULAN-DESAIN-2-TIER.html</code> §5.</p>
+    <div class="flow">
+      <div class="fbox"><b>1 · Auditor unggah</b><span>catatan/temuan awal (format bebas)</span></div>
+      <div class="arr">→</div>
+      <div class="fbox"><b>2 · Agen merumuskan</b><span>K/K/S/A per calon temuan</span></div>
+      <div class="arr">→</div>
+      <div class="fbox"><b>3 · Auditor tinjau</b><span>HITL</span></div>
+      <div class="arr">→</div>
+      <div class="fbox"><b>4 · KKP → QC → LHP</b><span>format &amp; standar terjaga</span></div>
+    </div>
+    <h3>Pembagian peran per unsur — siapa menyediakan apa</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Unsur</th><th>Sumber</th><th>Peran agen</th></tr>
+      <tr><td><strong>Kondisi</strong></td><td><strong>auditor</strong></td>
+          <td>rapikan jadi fakta spesifik — <strong>tidak menambah fakta</strong></td></tr>
+      <tr><td><strong>Kriteria</strong></td><td><strong>agen</strong></td>
+          <td><strong>nilai tambah utama</strong> — carikan pasal tepat dari 54 referensi bawaan + kutip presisi</td></tr>
+      <tr><td><strong>Sebab</strong></td><td>auditor</td>
+          <td>bila tak ada → <strong>"tidak cukup data"</strong>, dilarang menyimpulkan</td></tr>
+      <tr><td><strong>Akibat</strong></td><td>agen</td><td>konservatif, dari Kondisi × Kriteria</td></tr>
+      <tr><td><strong>Rekomendasi</strong></td><td>agen (usulan)</td><td>keputusan tetap di Ketua Tim</td></tr>
+    </table>
+    </div>
+    <p><strong>Sudah dikerjakan:</strong> jenis <code>CATATAN-AUDITOR</code> → <code>05-catatan-auditor</code> ·
+       mode doktrin <em>"SUSUN KKSA DARI CATATAN AUDITOR"</em> + aturan anti-"pemolesan" ·
+       skill dibatasi <strong>7</strong> (<code>reviu-pengadaan</code>, <code>reviu-rka-kl</code>, 5 keluarga <code>*-umum</code>) ·
+       UI: <code>CATATAN-AUDITOR</code> di urutan pertama.</p>
+
+    <div class="callout c-good">
+      <h3>✅ DoD TERCAPAI — uji tuntas 4 Agustus 2026</h3>
+      <p>Satu penugasan <code>reviu-pengadaan</code> dijalankan penuh di basis data terpisah
+         (<code>integral_free</code>): catatan auditor <code>.docx</code> berisi <strong>4 butir yang sengaja
+         dibuat berbeda mutunya</strong> → agen AT <strong>456 detik</strong> → KKP + QC SAIPI.</p>
+      <div class="scroll">
+      <table>
+        <tr><th>Butir catatan</th><th>Mutu bahan</th><th>Hasil agen</th><th>Doktrin yang diuji</th></tr>
+        <tr><td><strong>B1</strong> HPS tanpa sumber harga</td><td>lengkap, Sebab dari keterangan PPK</td>
+            <td><strong>T-001</strong> KKSA penuh · Kriteria = Perpres 16/2018 jo. 12/2021
+                <strong>Ps. 26 ayat (5)</strong> dikutip persis</td>
+            <td>nilai tambah <strong>Kriteria</strong></td></tr>
+        <tr><td><strong>B2</strong> addendum tanpa BA</td><td>Kondisi kuat, Sebab <strong>tidak ditelusuri</strong></td>
+            <td><strong>T-002</strong> · Sebab = <em>"Tidak cukup data…"</em> · <code>kode_penyebab</code> kosong</td>
+            <td><strong>anti-mengarang</strong></td></tr>
+        <tr><td><strong>B3</strong> dugaan afiliasi penyedia</td><td>dugaan, belum diverifikasi</td>
+            <td><strong>BUKAN temuan</strong> → <code>TIDAK_CUKUP_DATA</code> + usul verifikasi akta/AHU</td>
+            <td><strong>"diduga" bukan temuan</strong></td></tr>
+        <tr><td><strong>B4</strong> "administrasi kurang rapi"</td><td>kesan umum tanpa rincian</td>
+            <td><strong>BUKAN temuan</strong> → <code>TIDAK_CUKUP_DATA</code> + minta rincian dokumen &amp; pasal</td>
+            <td><strong>anti-"pemolesan"</strong></td></tr>
+      </table>
+      </div>
+      <p>Agen bahkan menandai sendiri satu Kriteria yang belum pasti —
+         <em>"[Auditor: mohon verifikasi nomor Bab/Pasal spesifik dalam Perlem LKPP 12/2021…]"</em> —
+         persis perilaku yang diminta doktrin, bukan menambal dengan pasal karangan.</p>
+      <ul style="margin-bottom:0">
+        <li><strong>QC SAIPI stage KKP: 16 OK · 0 KRITIS · 0 PERINGATAN · 3 NEEDS_REVIEW → LOLOS.</strong>
+            Ketiga NEEDS_REVIEW memang butuh konfirmasi manusia (deklarasi independensi, riwayat PIC,
+            kebutuhan keahlian khusus).</li>
+        <li>Kedua temuan berstatus <strong>DRAFT/PENDING</strong> di antrean HITL Ketua Tim ·
+            <code>KKP-Sari-Wijaya.docx</code> ter-render.</li>
+        <li>Tiap unsur membawa <code>dokumen_sumber</code> (berkas + halaman + kutipan).</li>
+      </ul>
+    </div>
+
+    <div class="callout c-warn">
+      <h3>Empat cacat ditemukan &amp; diperbaiki saat uji ini</h3>
+      <ol>
+        <li><code>POST /penugasan</code> <strong>hilang</strong> — ikut terhapus saat mencabut auto-build
+            preload di Fase 1; FREE tak bisa membuat penugasan sama sekali.</li>
+        <li><code>"tor" in n</code> cocok dengan <strong>audi·<u>tor</u></strong> → catatan auditor
+            diklasifikasi TOR. Sekelas: <em>moni·tor·ing</em>, <em>sp·ip</em>→SURVEY, <em>st·andar</em>→ST.</li>
+        <li><code>digest_generic</code> belum kenal <code>05-catatan-auditor</code> → digest keluar
+            sebagai <code>other-01.json</code>.</li>
+        <li>Dua fungsi pembantu ikut terhapus → <code>GET /penugasan/{id}</code> dan
+            <strong>antrean HITL Ketua Tim</strong> selalu 500.</li>
+      </ol>
+      <p style="margin-bottom:0">Cacat 2 memang ada juga di hulu, jadi diperbaiki di <strong>FULL</strong>
+         (<code>a1629c7</code>) lalu di-<em>cherry-pick</em> — sesuai aturan satu arah. Ditemukan pula
+         <code>GET …/administrasi</code> selalu 500 sejak commit isolasi (<code>780baaa</code>).
+         Regresi diuji: <strong>96 panggilan GET × 3 peran → 0 galat 5xx</strong>.</p>
+    </div>
+  </div>
+
+  <div class="fase run">
+    <div class="head"><h3>Fase 2B — Dual mode: 3 skema penyusunan KKSA</h3><span class="badge b-done">SELESAI</span></div>
+    <p>Keputusan pengguna (4 Agu 2026): FREE punya <strong>mode AI dan mode manual berdampingan</strong>.
+       Gerbangnya sama untuk ketiganya — <strong>begitu auditor menekan SUBMIT, KKSA masuk reviu
+       berjenjang ke Ketua Tim</strong>. Cara KKSA itu tersusun tidak mengubah gerbangnya.</p>
+    <div class="scroll">
+    <table>
+      <tr><th>#</th><th>Skema</th><th>Peran AI</th><th>Peran auditor</th></tr>
+      <tr><td><strong>1</strong></td><td>auditor unggah <strong>dokumen</strong></td>
+          <td>menganalisis + menyusun KKSA dari nol</td><td>edit manual / iterasi</td></tr>
+      <tr><td><strong>2</strong></td><td>auditor unggah <strong>dokumen + catatan</strong></td>
+          <td>membantu merumuskan KKSA, <strong>tidak menggali temuan lagi</strong></td><td>edit manual / iterasi</td></tr>
+      <tr><td><strong>3</strong></td><td>auditor menyusun <strong>KKSA manual</strong></td>
+          <td>tidak terlibat (atau hanya bila diminta)</td><td>mengarang penuh sendiri</td></tr>
+    </table>
+    </div>
+
+    <h3>Kesiapan mesin — sudah ada</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Kebutuhan</th><th>Yang sudah ada</th></tr>
+      <tr><td>Skema 1</td><td>alur baku v10 — <strong>berjalan</strong></td></tr>
+      <tr><td>Skema 2</td><td>jenis <code>CATATAN-AUDITOR</code> + mode doktrin "SUSUN KKSA DARI CATATAN AUDITOR" — <strong>lulus DoD Fase 2</strong></td></tr>
+      <tr><td>Edit manual</td><td><code>PUT …/temuan-review/{tid}/edit</code> (AT/KT/PT/PM). Overlay di <code>TemuanReview.edited_fields</code>; <code>temuan.json</code> tetap sumber kebenaran; tiap perubahan <strong>terekam log</strong></td></tr>
+      <tr><td>Hapus temuan</td><td><code>DELETE …/temuan/{tid}</code> (AT/KT/PT/PM)</td></tr>
+      <tr><td>Iterasi dengan AI</td><td>SSE <code>GET /agen/{nama}/stream</code> + <code>/attach</code></td></tr>
+      <tr><td><strong>Gerbang submit</strong></td>
+          <td><code>POST …/kkp/submit</code> (AT) → sasaran <code>SELESAI_KKP</code> + <code>diajukan_oleh/pada</code> → sentinel <code>kkp-at-done.flag</code> → status <code>KKP_AT_DONE</code> → <strong>KT menyetujui per-sasaran → Lembar Reviu KT/PT/PM</strong></td></tr>
+    </table>
+    </div>
+
+    <div class="callout c-crit">
+      <h3>Yang tadinya belum ada — semuanya sudah dikerjakan</h3>
+      <ol style="margin-bottom:0">
+        <li><strong>Tidak ada endpoint BUAT temuan manual.</strong> Yang tersedia hanya
+            <em>edit</em> dan <em>hapus</em> temuan yang sudah ada; penulisan temuan baru cuma
+            lewat tool agen <code>append_temuan</code> yang tak terekspos sebagai rute HTTP.
+            <strong>Skema 3 mustahil dijalankan sekarang.</strong></li>
+        <li><strong><code>TemuanEditPayload</code> tidak memuat <code>sebab</code>,
+            <code>rekomendasi</code>, dan <code>dokumen_sumber</code></strong> — hanya judul,
+            kondisi, kriteria, akibat, note. Akibatnya ketika agen menulis <em>"tidak cukup data"</em>
+            pada Sebab (persis yang dituntut doktrin anti-mengarang), <strong>auditor yang kemudian
+            menemukan penyebabnya tidak punya jalan untuk mengisinya.</strong> Menyandera
+            <em>ketiga</em> skema, bukan hanya skema 3.</li>
+        <li><strong>Tidak ada penanda mode maupun asal-usul temuan</strong> — label "Draf hasil
+            analisis AI" tak boleh menempel pada temuan yang murni ditulis auditor.</li>
+        <li><strong>Formulir KKSA manual di UI belum ada</strong> — yang ada baru edit inline
+            atas temuan bikinan AI.</li>
+      </ol>
+    </div>
+
+    <h3>Rancangan</h3>
+    <ul>
+      <li><strong>Mode disimpan per sasaran, bukan per penugasan.</strong> Satu penugasan realistis
+          campur: sasaran A cukup manual, sasaran B minta bantuan AI. Menyimpan di tingkat
+          penugasan memaksa auditor memilih terlalu dini.</li>
+      <li><strong>Asal-usul melekat pada temuan</strong> (<code>origin</code>: <code>AI</code> ·
+          <code>AI_DARI_CATATAN</code> · <code>MANUAL</code>) supaya pelabelan draf-AI jujur, dan
+          uji mutu Fase 4 bisa membandingkan mutu antar-asal.</li>
+      <li><strong>Perluas <code>TemuanEditPayload</code></strong> dengan <code>sebab</code>,
+          <code>rekomendasi</code>, <code>dokumen_sumber</code> — berdiri sendiri dan sebaiknya
+          <strong>didahulukan</strong> karena menutup cacat nyata.</li>
+      <li><strong>Endpoint baru <code>POST /penugasan/{id}/temuan</code></strong> (AT) untuk menulis
+          KKSA dari nol, memakai jalur upsert yang sama dengan agen supaya penomoran
+          <code>T-00n</code> tidak bentrok.</li>
+      <li><strong>Doktrin tidak dilonggarkan untuk mode manual</strong>: kutipan sumber tetap wajib
+          (formulir memaksa <code>dokumen_sumber</code>), QC SAIPI tetap berjalan sebelum submit,
+          unsur tanpa dukungan tetap <strong>ditandai</strong> — bukan dibiarkan kosong diam-diam.</li>
+    </ul>
+    <h3>Hasil eksekusi (5 Agustus 2026)</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Ditambah</th><th>Guna</th></tr>
+      <tr><td><code>POST …/temuan</code> (AT)</td>
+          <td>tulis KKSA dari nol — <strong>skema 3 kini mungkin</strong>. <code>dokumen_sumber</code>
+              wajib ≥1 &amp; tiap entri wajib <code>file</code> + <code>halaman</code>; dilanggar → <strong>422</strong></td></tr>
+      <tr><td><code>POST …/kkp/render</code> (AT)</td>
+          <td>render <code>KKP.docx</code> <strong>tanpa sesi agen</strong> — tanpa ini mode manual mustahil memenuhi LAK-007</td></tr>
+      <tr><td><code>origin</code> pada temuan</td>
+          <td><code>AI</code> · <code>AI_DARI_CATATAN</code> · <code>MANUAL</code> — tampil sebagai lencana di UI</td></tr>
+      <tr><td><code>mode</code> pada sasaran</td>
+          <td><code>AI</code>/<code>CATATAN</code>/<code>MANUAL</code>, dipilih KT di PKP — <strong>arahan, bukan kunci</strong></td></tr>
+      <tr><td>Formulir KKSA manual + kolom Sebab</td><td>auditor menulis &amp; melengkapi sendiri</td></tr>
+    </table>
+    </div>
+
+    <div class="callout c-crit">
+      <h3>Empat cacat yang ketahuan saat menguji — ikut ditutup</h3>
+      <ol style="margin-bottom:0">
+        <li><code>TemuanEditPayload</code> tanpa <code>sebab</code>/<code>dokumen_sumber</code>/kodefikasi →
+            ketika agen menulis Sebab <em>“tidak cukup data”</em> sesuai doktrin anti-mengarang, auditor yang
+            <strong>kemudian</strong> menemukan penyebabnya <strong>buntu</strong>. Menyandera ketiga skema.</li>
+        <li>Penomoran id memakai <code>len()+1</code> → hapus T-001, temuan berikutnya jadi T-002 yang sudah ada →
+            <strong>temuan lama tertimpa diam-diam</strong> lewat UPSERT. Kini <code>max+1</code>, diuji 7 kasus.</li>
+        <li><code>id_temuan_terkait</code> <strong>tidak pernah diisi jalur mana pun</strong>, hanya diperiksa QC →
+            LAK-009 menyala di semua penugasan. Kini diturunkan saat submit dari <code>sasaran_id</code> tiap temuan.</li>
+        <li><code>context.md</code> scaffold tak punya bagian <strong>Ruang Lingkup</strong> yang diperiksa REN-005.</li>
+      </ol>
+    </div>
+
+    <div class="callout c-good">
+      <h3>✅ DoD TERCAPAI — tiga skema dalam satu penugasan</h3>
+      <div class="scroll">
+      <table>
+        <tr><th>Temuan</th><th>Sasaran</th><th><code>mode</code></th><th><code>origin</code></th></tr>
+        <tr><td>T-001</td><td>S-03</td><td>MANUAL</td><td><code>MANUAL</code></td></tr>
+        <tr><td>T-002</td><td>S-01</td><td>AI</td><td><code>AI</code></td></tr>
+        <tr><td>T-003</td><td>S-02</td><td>CATATAN</td><td><code>AI_DARI_CATATAN</code></td></tr>
+      </table>
+      </div>
+      <p style="margin-bottom:0">Ketiganya ter-submit dalam <strong>satu kali gerbang</strong> (3 sasaran →
+         <code>SELESAI_KKP</code>, <code>id_temuan_terkait</code> terisi, status <code>KKP_AT_DONE</code>), dan
+         <strong>QC SAIPI: 16 OK · 0 KRITIS · 0 PERINGATAN</strong> (sisa 3 NEEDS_REVIEW memang tak bisa dicek
+         otomatis). Sebab hasil editan auditor terbukti ter-render di <code>KKP.docx</code> — bukan versi agen.
+         <code>tsc --noEmit</code> bersih, <code>next build</code> sukses.</p>
+    </div>
+  </div>
+
+  <div class="fase next">
+    <div class="head"><h3>Fase 3 — Efisiensi &amp; pagar biaya</h3><span class="badge b-next">BERIKUTNYA</span></div>
+    <ul>
+      <li>Model hemat + batas giliran agen; penilaian per-aspek &amp; inkremental tetap nonaktif.</li>
+      <li><strong>Kuota per Inspektorat per bulan</strong> + laporan pemakaian (kini baru ada batas per jam/pengguna).</li>
+      <li>Label tetap: <em>"Draf hasil analisis AI — wajib diverifikasi auditor berwenang."</em></li>
+    </ul>
+    <div class="dod"><strong>Selesai bila:</strong> biaya per penugasan <strong>terukur</strong> (bukan estimasi) dan berada di plafon yang direncanakan.</div>
+  </div>
+
+  <div class="fase next">
+    <div class="head"><h3>Fase 4 — Uji mutu</h3><span class="badge b-next">BERIKUTNYA</span></div>
+    <ul>
+      <li><strong>Uji banding FREE vs BEKU</strong> pada <strong>objek yang sama</strong> → ukuran nyata
+          "seberapa kurang pintar", sekaligus bahan menjelaskan keterbatasan ke pengguna.</li>
+      <li>Uji skema KKSA dengan <strong>catatan auditor nyata</strong>, termasuk catatan yang
+          <strong>sengaja tidak lengkap</strong> → memastikan agen <strong>menandai</strong>, bukan mengarang.</li>
+    </ul>
+    <div class="dod"><strong>Selesai bila:</strong> doktrin anti-mengarang &amp; anti-pemolesan terbukti dipatuhi.</div>
+  </div>
+
+  <div class="fase next">
+    <div class="head"><h3>Fase 5 — Integrasi SIMWAS v2</h3><span class="badge b-next">BERIKUTNYA</span></div>
+    <ul>
+      <li><strong>SSO OIDC</strong> (kini masih login peran untuk pengembangan) + pemetaan peran AT/KT/PT.</li>
+      <li>Sinkronisasi <strong>ST &amp; sasaran</strong> dari SIMWAS (endpoint sudah ada, masih memakai contoh).</li>
+      <li><strong>Pilot 1 Inspektorat</strong> yang bersedia.</li>
+    </ul>
+    <div class="dod"><strong>Selesai bila:</strong> satu penugasan tuntas end-to-end dari SIMWAS tanpa intervensi manual.</div>
+  </div>
+
+  <div class="fase next">
+    <div class="head"><h3>Fase 6 — Buka bertahap</h3><span class="badge b-next">BERIKUTNYA</span></div>
+    <ul>
+      <li>Tambah Inspektorat bertahap sambil memantau kuota, antrean, dan mutu.</li>
+      <li>Siapkan dukungan pengguna (FAQ + kanal terbatas).</li>
+    </ul>
+  </div>
+
+  <h2>Batas yang TIDAK boleh diturunkan</h2>
+  <div class="callout c-crit">
+    <h3>⚠ Justru makin penting di FREE</h3>
+    <p>FREE dipakai di luar kendali langsung tim Inspektorat II, dan tanpa pattern hidup agen lebih
+       bergantung pada penalarannya sendiri. Enam batas berikut <strong>sama persis dengan FULL</strong>:</p>
+    <ol style="margin-bottom:0">
+      <li><strong>Anti-mengarang</strong> — Sebab hanya bila terbukti; jika tidak: "tidak cukup data".</li>
+      <li><strong>"Perlu diverifikasi/diduga" bukan temuan.</strong></li>
+      <li><strong>Kutipan sumber wajib</strong> (nama dokumen + halaman/pasal).</li>
+      <li><strong>HITL wajib</strong> — temuan berstatus DRAFT sampai auditor menyetujui.</li>
+      <li><strong>QC SAIPI tetap berjalan.</strong></li>
+      <li><strong>Label keluaran</strong> sebagai draf AI.</li>
+    </ol>
+  </div>
+  <div class="callout c-warn">
+    <h3>Risiko khas skema KKSA: "pemolesan"</h3>
+    <p style="margin-bottom:0">Struktur KKSA memberi kesan otoritatif. Bahaya terbesarnya bukan lagi agen
+       mengarang temuan, melainkan membuat <strong>temuan lemah TERDENGAR rigor</strong>. Pengamannya:
+       unsur tanpa dukungan <strong>ditandai eksplisit</strong> (<em>"[BELUM DIDUKUNG BUKTI — mohon auditor lengkapi]"</em>),
+       bukan diisi; catatan ambigu <strong>ditanyakan, bukan ditebak</strong>.</p>
+  </div>
+
+  <h2>Keputusan yang masih terbuka</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>#</th><th>Pertanyaan</th></tr>
+    <tr><td>1</td><td>Besaran kuota per Inspektorat per bulan</td></tr>
+    <tr><td>2</td><td>Siapa menanggung biaya API FREE</td></tr>
+    <tr><td>3</td><td>Model dukungan pengguna</td></tr>
+  </table>
+  </div>
+
+  <footer>
+    ∫ INTEGRAL FREE · Inspektorat Jenderal, Kementerian Komunikasi dan Digital RI<br>
+    Sumber tertulis: <code>docs/ROADMAP-FREE.md</code> · desain: <code>docs/USULAN-DESAIN-2-TIER.html</code>
+  </footer>
+</div>
+</body>
+</html>

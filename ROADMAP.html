@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roadmap — INTEGRAL v8</title>
+<style>
+  :root{
+    --purple:#5C4FE7; --purple-d:#4338CA; --purple-l:#EEF0FE;
+    --ink:#1E2030; --muted:#6B7088; --line:#E7E8F0; --bg:#F7F8FC;
+    --green:#16A34A; --amber:#D97706; --red:#DC2626; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:15.5px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px 80px}
+  /* header */
+  header{background:linear-gradient(135deg,var(--purple),var(--purple-d));color:#fff;
+    margin:0 -22px 0;padding:42px 22px 34px;border-radius:0 0 26px 26px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .glyph{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.16);
+    display:grid;place-items:center;font-size:30px;font-weight:600;line-height:1}
+  .brand h1{margin:0;font-size:26px;letter-spacing:.3px}
+  .brand .sub{margin:2px 0 0;opacity:.9;font-size:13px;letter-spacing:1.5px;text-transform:uppercase}
+  .tagline{margin:18px 0 0;font-size:17px;font-weight:500;opacity:.97}
+  .meta{margin:14px 0 0;font-size:13px;opacity:.85}
+  .meta code{background:rgba(255,255,255,.18);padding:1px 7px;border-radius:6px;font-size:12px}
+  /* sections */
+  section{margin-top:34px}
+  h2{font-size:20px;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  h2 .n{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;
+    background:var(--purple-l);color:var(--purple-d);border-radius:8px;font-size:13px;font-weight:700}
+  .lead{color:var(--muted);margin:.2em 0 1em}
+  .callout{background:var(--purple-l);border:1px solid #DADDFB;border-left:4px solid var(--purple);
+    border-radius:12px;padding:14px 18px;margin:14px 0}
+  .callout strong{color:var(--purple-d)}
+  /* pillars */
+  .pillars{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:8px}
+  .pillar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .pillar .ic{font-size:22px}
+  .pillar h3{margin:6px 0 2px;font-size:15px}
+  .pillar p{margin:0;color:var(--muted);font-size:13.5px}
+  .pillar .mod{display:inline-block;margin-top:8px;background:var(--purple-l);color:var(--purple-d);
+    font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px}
+  .flow{margin-top:14px;background:#fff;border:1px dashed #C9CCEC;border-radius:12px;
+    padding:13px 16px;font-size:14px;color:var(--ink)}
+  .flow b{color:var(--purple-d)}
+  /* lists */
+  ul.clean{list-style:none;padding:0;margin:10px 0}
+  ul.clean li{position:relative;padding:5px 0 5px 26px}
+  ul.clean li::before{content:"";position:absolute;left:4px;top:12px;width:7px;height:7px;
+    border-radius:50%;background:var(--purple)}
+  /* workstream cards */
+  .ws{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:14px 0;
+    box-shadow:0 1px 2px rgba(30,32,48,.04)}
+  .ws .head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .ws .tag{background:var(--ink);color:#fff;font-size:12px;font-weight:700;border-radius:7px;padding:3px 9px;letter-spacing:.5px}
+  .ws.new .tag{background:var(--purple)}
+  .ws h3{margin:0;font-size:16px}
+  .ws .desc{color:var(--muted);font-size:13.5px;margin:8px 0 4px}
+  .task{display:flex;gap:10px;padding:7px 0;border-top:1px solid #F0F1F7}
+  .task:first-of-type{border-top:0}
+  .box{flex:0 0 auto;width:16px;height:16px;border:1.8px solid #C3C6DA;border-radius:5px;margin-top:3px}
+  .task .t{font-size:14px}
+  .task .t b{color:var(--ink)}
+  .task .sub{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;vertical-align:middle;margin-left:6px}
+  .pill.new{background:#FDE9D2;color:var(--amber)}
+  .pill.keep{background:#DCFCE7;color:var(--green)}
+  /* steps */
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:8px 0}
+  ol.steps li{counter-increment:s;position:relative;padding:8px 0 8px 40px}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:7px;width:26px;height:26px;
+    background:var(--purple-l);color:var(--purple-d);border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:13px}
+  /* code */
+  pre{background:#1E2030;color:#E7E8F0;border-radius:12px;padding:16px 18px;overflow:auto;font-size:12.5px;line-height:1.7}
+  pre .c{color:#8A8FB5}
+  .note{background:#FFF7ED;border:1px solid #FCE3C4;border-radius:10px;padding:11px 15px;color:#7A4E12;font-size:13.5px;margin-top:12px}
+  /* done list */
+  .done li{color:#15803D}
+  /* legend + footer */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;text-align:center}
+  @media(max-width:600px){.pillars{grid-template-columns:1fr}}
+  @media print{body{background:#fff}header{border-radius:0}.ws{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <div class="glyph">∫</div>
+    <div>
+      <h1>INTEGRAL</h1>
+      <p class="sub">Workspace Pengawasan · Inspektorat II Komdigi</p>
+    </div>
+  </div>
+  <p class="tagline">Roadmap v8 — konsolidasi jadi satu produk tunggal</p>
+  <p class="meta">Dibuat 16 Juni 2026 · Basis clone Audit v7 <code>d0c8a81</code> · branch <code>v8-main</code> · folder <code>sistem audit v8</code></p>
+</header>
+
+<section>
+  <div class="callout">
+    <strong>Nama tetap "INTEGRAL".</strong> Yang dihapus adalah <em>dualitasnya</em> — selama ini terasa dua produk
+    (“INTEGRAL AI Workspace · <em>Powered by Audit AI v7</em>”). Di v8, “Audit AI” turun menjadi <b>engine/versi internal</b>,
+    bukan brand terpisah. Satu nama, satu UI, satu data model. <b>“v8” = nomor versi codebase, bukan nama baru.</b>
+    Logo ∫ &amp; palette ungu dipertahankan.
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">0</span> Keputusan pendiri v8</h2>
+  <ul class="clean">
+    <li><b>INTEGRAL bukan sistem terpisah</b> — ia lapisan branding/UX di atas codebase v7 yang sama. v8 = hapus dualitasnya, jadikan satu produk.</li>
+    <li><b>Nama produk = INTEGRAL</b> (nama lama dipertahankan; hanya framing “powered by Audit v7” yang dibuang).</li>
+    <li><b>Clone, bukan merge dua repo</b> — tak ada repo “audit v7” kedua; v8 = salinan bersih repo ini.</li>
+    <li><b>Dipertahankan:</b> workflow 7-tahapan · integrasi SIMWAS v2 · CACM/EWS · eval harness + mutu agen (R0–R4, PKP-di-feedback).</li>
+    <li><b>Baru di v8:</b> login username + password &nbsp;·&nbsp; pemantauan Tindak Lanjut Hasil Pengawasan (TLHP) sebagai pilar penuh.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Visi produk — INTEGRAL = workspace utama auditor</h2>
+  <p class="lead">Satu tempat menjalankan seluruh pengawasan: dari informasi → deteksi → kerja → tindak lanjut.</p>
+  <div class="pillars">
+    <div class="pillar"><div class="ic">📚</div><h3>Pengetahuan</h3><p>Semua informasi: pattern temuan, regulasi, glossary, profil auditi/vendor, riwayat.</p><span class="mod">Wiki</span></div>
+    <div class="pillar"><div class="ic">🔔</div><h3>Deteksi dini</h3><p>Pantau kondisi anggaran/pengadaan/kinerja satker; picu usulan penugasan.</p><span class="mod">CACM / EWS</span></div>
+    <div class="pillar"><div class="ic">🤖</div><h3>Mesin kerja</h3><p>Eksekusi analisis: digest → temuan → KKP → LHR, dengan HITL.</p><span class="mod">Agen AT/KT · skill R0–R4</span></div>
+    <div class="pillar"><div class="ic">🔁</div><h3>Tindak lanjut</h3><p>Pantau status rekomendasi LHP/LHR sampai tuntas — menutup lingkaran.</p><span class="mod">TLHP — baru</span></div>
+  </div>
+  <p class="flow"><b>Alur ideal:</b> EWS (CACM) menemukan risiko → penugasan dibuat → agen menganalisis (didukung Wiki) → laporan terbit → <b>TLHP</b> mengawal rekomendasi sampai selesai.</p>
+</section>
+
+<section>
+  <h2><span class="n">1</span> Prinsip arsitektur (warisan v7)</h2>
+  <ul class="clean">
+    <li><b>backend/v6 READ-ONLY</b> — semua perubahan di app-layer + template; V6 tak ditulis ulang.</li>
+    <li><b>2 agen Claude</b> (AT &amp; KT); ingestion &amp; QC SAIPI = deterministik/sinkron, bukan agen.</li>
+    <li><b>Skill registry folder-driven</b>; skill = substansi domain, orkestrasi di prompt agen (Tahap R0–R4).</li>
+    <li><b>Anti-halusinasi</b>: tiap temuan ber-dokumen_sumber; <code>sebab</code> hanya untuk skill AUDIT.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">2</span> Prinsip UX — UI clean &amp; minim friksi</h2>
+  <div class="callout"><strong>Permintaan utama user:</strong> “UI clean, tidak banyak tombol atau hal yang membingungkan.” Ini pagar desain v8 — berlaku di <b>setiap</b> layar &amp; fitur baru.</div>
+  <ul class="clean">
+    <li><b>Satu aksi utama per layar</b> — tombol primer jelas (maks. 2). Aksi lain di menu “⋯ / Lainnya”.</li>
+    <li><b>Progressive disclosure</b> — opsi lanjutan/teknis disembunyikan; default cerdas mengurangi pilihan.</li>
+    <li><b>Tanpa tombol mati/duplikat</b> — tiap tombol punya aksi nyata (tema &amp; bell sudah dihapus di v7).</li>
+    <li><b>Navigasi tunggal</b> lewat tahapan (ala SIMWAS) — auditor selalu tahu “ada di tahap mana”.</li>
+    <li><b>Bahasa manusia</b> — label kata kerja jelas (“Susun PKP”, “Setujui Temuan”), bukan jargon/nama tool.</li>
+    <li><b>Status terlihat sekilas</b> — progres &amp; warna (hijau/kuning/merah) terbaca tanpa menebak.</li>
+    <li><b>Acceptance tiap fitur UI:</b> “auditor non-teknis paham apa yang harus diklik dalam &lt; 5 detik, tanpa pelatihan.”</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">3</span> Prinsip kinerja &amp; skala (±80 pengguna)</h2>
+  <div class="callout"><strong>Sistem dipakai ~80 auditor</strong> — harus tetap ringan &amp; responsif saat bersamaan. Patokan: dashboard buka <b>&lt; 1,5 detik</b>, navigasi terasa instan.</div>
+  <ul class="clean">
+    <li><b>Agregat dashboard di-precompute</b>, bukan dihitung saat load — angka EWS/PKPT/TLHP/kinerja dari tabel ringkasan/cache (refresh terjadwal/event), hindari N+1.</li>
+    <li><b>Agent run = berat</b> (subprocess CLI + LLM + SSE) → wajib <b>antrian + batas konkurensi global</b> + backpressure. 80 user ≠ 80 run serentak, tapi tak boleh tumbang saat lonjakan.</li>
+    <li><b>DB</b>: pool memadai + indeks kolom panas (status, temuan, TLHP aging, EWS); query async + paginasi.</li>
+    <li><b>Frontend ringan</b>: bundle kecil, hindari re-render mahal, SSE hanya saat run aktif, data dashboard via 1 endpoint ringkas.</li>
+    <li><b>Backend stateless</b> (sesi via JWT) → siap horizontal scaling; hindari state in-memory terikat 1 worker.</li>
+    <li><b>Acceptance</b>: uji beban ringan 50–80 sesi (buka dashboard + beberapa run paralel) tanpa degradasi parah.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Workstream</h2>
+
+  <div class="ws">
+    <div class="head"><span class="tag">A</span><h3>Konsolidasi identitas INTEGRAL <span class="pill keep">tetap nama</span></h3></div>
+    <p class="desc">Hapus dualitas (“Powered by Audit AI v7”), bukan ganti nama. “Audit AI” jadi engine/versi internal.</p>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A1 — Hapus framing “Powered by Audit AI v7”</b> <span class="pill keep">selesai</span><span class="sub">Landing, login, footer, sidebar, meta title → “INTEGRAL — Workspace Pengawasan Inspektorat II Komdigi”; footer “Mesin AI: Claude Agent SDK”. Verified 0 sisa.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A2 — Identitas tetap</b> <span class="pill keep">selesai</span><span class="sub">Logo ∫ + ungu #5C4FE7 dipertahankan; tak ada aset baru.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A3 — Narasi dokumen</b> <span class="pill keep">selesai</span><span class="sub">README.md INTEGRAL-first (Audit AI = engine internal, v8 = generasi codebase). HANDOVER sudah INTEGRAL.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A4 — Versi internal v7→v8</b> <span class="pill keep">selesai</span><span class="sub">FastAPI title INTEGRAL v8.0.0 + root endpoint; package.json integral-frontend@8.0.0; header prompt agen → INTEGRAL.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A5 — Rapikan penamaan teknis</b> <span class="pill keep">selesai</span><span class="sub">Rename docs openapi/kontrak →v8 + brand internal. Sisa legacy audit-system-v4 di skill non-reviu → selesai di C4.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>A6 — Arsip</b> docs rencana “fase INTEGRAL” usang ke docs/archive/.</div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A7 — Audit UI clean</b> <span class="pill keep">selesai</span><span class="sub">Tak ada tombol mati/duplikat. SEMUA 13 confirm() native → modal INTEGRAL (render visual terverifikasi screenshot). Konsistensi warna: 8 tombol aksi hardcoded violet/indigo/sky → token brand bg-primary; badge severity/status tetap semantik.</span></div></div>
+  </div>
+
+  <div class="ws new">
+    <div class="head"><span class="tag">B</span><h3>Autentikasi username + password <span class="pill keep">B1–B3 selesai</span></h3></div>
+    <p class="desc"><b>✅ Login username+password (16 Juni)</b> — User +username+password_hash (bcrypt), 5 akun seed (incl. PM Doddy), /auth/login verifikasi bcrypt→JWT. Frontend: form + "Login cepat (dev)" 5 kartu auto-isi per role. Sisa: B4 keamanan (rate-limit/ganti password), B5 SSO. ⚠ Produksi: matikan login cepat + ganti DEV_PASSWORD.</p>
+    <div class="task"><div class="box"></div><div class="t"><b>B1 — Skema</b>: username (unik) + password_hash di tabel User; hash argon2/bcrypt (jangan plaintext).</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>B2 — Backend auth</b>: login → JWT, seeding admin awal, ganti password. Klaim role tetap (RBAC AT/KT/PT/PM).</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>B3 — Frontend</b>: form login username+password (ganti kartu peran), guard route, halaman ganti password.</div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>B4 — Keamanan login</b> <span class="pill keep">selesai</span><span class="sub">Lockout brute-force (5 gagal/15mnt→kunci 15mnt, 429). Ganti password (POST /auth/change-password + modal TopBar; min 8 char). Expiry JWT konfigurabel + handling 401 terpusat (auto-logout → /login?expired=1). Semua teruji curl+E2E; ambang via .env.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>B5 — SSO SIMWAS koeksistensi</b>: login lokal + SSO JWKS; produksi → SSO, dev → lokal.</div></div>
+  </div>
+
+  <div class="ws">
+    <div class="head"><span class="tag">C</span><h3>Fitur dipertahankan (verifikasi pasca-konsolidasi)</h3></div>
+    <div class="task"><div class="box"></div><div class="t"><b>C1 — Workflow 7-tahapan</b> <span class="pill keep">tetap</span><span class="sub">Kartu Penugasan → PKP → KKP (AI+HITL) → LRS KK → Konsep LHP → LRS LHP → Laporan. Pastikan status &amp; panel approval/LHP tetap jalan.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>C2 — Integrasi SIMWAS v2</b> <span class="pill keep">tetap</span><span class="sub">Finalisasi kontrak REST (openapi→v8), JWKS SSO, webhook; selaras dengan B5.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>C3 — CACM/EWS</b> <span class="pill keep">tetap</span><span class="sub">Modul CACM + CacmRun/EwsFinding + halaman CACM dipertahankan &amp; diverifikasi.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>C4 — Orkestrasi seragam semua skill</b> <span class="pill keep">selesai</span><span class="sub">13/13 skill non-reviu di-refactor ke pola v7 (blok "Eksekusi di v7" + tabel Tahap): AUDIT A0–A4 (wajib Sebab), EVALUASI E0–E4 (tanpa Sebab), PEMANTAUAN P0–P4, KONSULTANSI K0–K3. Legacy bash/Task/_ROLE/audit-system-v4 dibuang; substansi utuh; registry 17 OK. Sisa: PKP-di-feedback + backend/eval.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>C5 — TLHP sebagai pilar penuh</b> <span class="pill keep">fase 1+2 selesai</span><span class="sub">✅ endpoint /tlhp + aging + kritis, halaman + menu, widget F4, data dummy. ✅ <b>model DB TlhpRekomendasi</b> + <b>auto-ingest tutup-lingkaran</b>: LHP disetujui PT/PM → rekomendasi (_LHP/rekomendasi.json) jadi item TLHP (anti-dup) + manual POST /tlhp/ingest/{id}. Teruji penugasan 51 → +6. <b>Lanjutan ⛔ PRIORITAS TERAKHIR</b> (arahan user): references/agen TLHP + derive satker/PIC + sinkron SIMWAS — inti TLHP sudah jalan.</span></div></div>
+  </div>
+
+  <div class="ws">
+    <div class="head"><span class="tag">D</span><h3>Infra &amp; bootstrap v8</h3></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>D1 — Bootstrap dev</b> <span class="pill keep">selesai</span><span class="sub">Backend .venv Python 3.12 (bukan sistem 3.9) + pip install; frontend npm install. Verified :8000 &amp; :3000 = 200, 17 skills. Gotcha tim saat clone: .env + symlink backend/.env gitignored (buat dari .env.example + ln -sf ../.env backend/.env); APP_*_PATH harus absolut ke repo ini.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>D2 — Database v8</b>: putuskan DB terpisah audit_v8 vs lanjut audit_v7; jalankan migrasi schema auth.</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>D3 — Deploy ke PDN (Pusat Data Nasional)</b> <span class="pill new">⛔ prioritas terakhir</span><span class="sub">Target = PDN (bukan Fly.io). Sesuaikan DEPLOY.md/compose/Dockerfile utk lingkungan PDN; cek implikasi akses internet (SDK Claude butuh API Anthropic). Dikerjakan paling akhir.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>D4 — Repo GitHub v8</b> (opsional): saat ini folder lokal + branch v8-main; buat repo audit-system-v8 bila perlu.</div></div>
+  </div>
+
+  <div class="ws">
+    <div class="head"><span class="tag">E</span><h3>Backlog warisan v7 (tetap berlaku)</h3></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t">Konsistensi skill rumpun audit/evaluasi/pemantauan/konsultansi → pola Tahap <span class="pill keep">selesai (C4)</span></div></div>
+    <div class="task"><div class="box"></div><div class="t">Gap skill: audit-kinerja wajib riset online tapi agen tak punya tool web; unsur “Sebab” pada evaluasi-mr/umum kontradiktif (sebab hanya audit).</div></div>
+    <div class="task"><div class="box"></div><div class="t">Eval P3–P5: grounding+coverage, token logging + instrumen HITL, akurasi digest.</div></div>
+    <div class="task"><div class="box"></div><div class="t">Fix kosmetik: warning duplicate-key Sidebar; cap 14000 char load_skill untuk 2 skill pipeline besar.</div></div>
+  </div>
+
+  <div class="ws new">
+    <div class="head"><span class="tag">F</span><h3>Dashboard beranda — pusat informasi <span class="pill keep">live (6 widget)</span></h3></div>
+    <p class="desc"><b>Beranda LIVE ✅ (16 Juni)</b> — konsumsi /dashboard/summary, desain clean. F1 EWS · F2 PKPT · F4 TLHP · F6 scorecard + kartu Penugasan terisi data; F3/F5 placeholder “segera hadir” (modul belum dibangun). Diverifikasi screenshot.</p>
+    <div class="task"><div class="box"></div><div class="t"><b>F1 — Update informasi EWS</b><span class="sub">Peringatan terbaru dari CACM/EWS (per satker, severity) → link detail.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F2 — Progres pemenuhan PKPT</b><span class="sub">Rencana vs realisasi (%, sisa). <b>Dummy dulu</b>: fixture pkpt-dummy.json (12 kegiatan: jenis · satker · rencana bulan · status). Nanti sinkron SIMWAS/sumber resmi.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F3 — Permintaan pengawasan belum ditindaklanjuti</b><span class="sub">Antrian ND/permintaan masuk yang belum jadi penugasan (umur, asal).</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F4 — Progres TLHP</b><span class="sub">Rekap status SUDAH/PROSES/BELUM + kritis &gt;365 hari (dari modul C5).</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F5 — Tren temuan berulang</b><span class="sub">Pola temuan lintas penugasan/waktu (Wiki pola-berulang + temuan), grafik tren.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F6 — Capaian kinerja (scorecard)</b><span class="sub">Nilai SPIP · SAKIP · RB · IACM · PEKPP · temuan BPK + tren. <b>Manual dulu</b> (fixture capaian-kinerja.json); nanti dihubungkan ke API sistem kinerja saat siap.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F7 — Satu endpoint ringkas</b><span class="sub">GET /dashboard/summary dari tabel ringkasan (bukan agregasi berat live), role-aware.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F8 — Desain clean</b> (Prinsip UX §2)<span class="sub">Kartu seragam, status warna sekilas, klik kartu → detail.</span></div></div>
+  </div>
+
+  <div class="ws new">
+    <div class="head"><span class="tag">G</span><h3>Kinerja &amp; skala (±80 pengguna) <span class="pill new">baru</span></h3></div>
+    <p class="desc">Operasionalisasi Prinsip §3 — fondasi agar ringan saat dipakai banyak orang.</p>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>G1 — Endpoint ringkas <code>GET /dashboard/summary</code></b> <span class="pill keep">selesai</span><span class="sub">Agregat murah (penugasan & EWS GROUP BY ber-indeks) + PKPT/kinerja fixture, cache TTL 30 dtk. Stub jujur utk modul belum-ada.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>G2 — Cap konkurensi global agent run</b> <span class="pill keep">selesai</span><span class="sub">max_concurrent_agent_runs=6 + 429 backpressure saat penuh. (Antrian “menunggu” sejati = lanjutan.)</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>G3 — Indeks DB</b> <span class="pill keep">selesai</span><span class="sub">penugasan(status,ketua_tim_id), dokumen(penugasan_id), agent_runs(penugasan_id), ews_findings(satker_kode,status) — model + live DB.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G4 — Frontend ringan</b>: code-split, kurangi re-render, SSE hanya saat run aktif, 1 fetch dashboard (endpoint G1 siap).</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G5 — Uji beban ringan</b> 50–80 sesi simulasi → ukur p95 latensi, tetapkan baseline.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Urutan eksekusi yang disarankan</h2>
+  <ol class="steps">
+    <li><b>D1 bootstrap</b> — pastikan v8 jalan lokal (npm/pip install) sebelum apa pun.</li>
+    <li><b>B (auth)</b> + <b>A (konsolidasi identitas)</b> — fondasi v8.</li>
+    <li><b>G (kinerja &amp; skala)</b> — tabel ringkasan, cap konkurensi, indeks. Fondasi ringan untuk 80 user &amp; menopang dashboard.</li>
+    <li><b>C (verifikasi fitur)</b> + <b>C5 TLHP</b>.</li>
+    <li><b>F (dashboard beranda)</b> — setelah C5 &amp; G1 siap, rakit 6 widget di atas 1 endpoint ringkas.</li>
+    <li><b>D2 (DB v8/migrasi auth)</b>, lalu <b>E (backlog mutu)</b>.</li>
+    <li><b>⛔ TERAKHIR (arahan user):</b> Lanjutan TLHP · <b>D3 Deploy ke PDN</b> · D4 repo GitHub. Inti semua sudah jalan lokal.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Cara menjalankan v8 (lokal)</h2>
+<pre><span class="c"># 1. Database (Docker) — pakai compose yang sama</span>
+cd "sistem audit v8"
+docker compose up -d db
+
+<span class="c"># 2. Backend (install dependency — tidak ikut clone)</span>
+cd backend
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m uvicorn app.main:app --port 8000
+
+<span class="c"># 3. Frontend</span>
+cd ../frontend
+npm install
+npm run dev</pre>
+  <div class="note"><b>Catatan port:</b> v7 &amp; v8 memakai port (8000/3000) &amp; DB (audit_v7) yang sama. Untuk jalan berdampingan, ubah port + DATABASE_URL→audit_v8 di .env v8. Untuk pindah total ke v8, matikan service v7 dulu.</div>
+</section>
+
+<section>
+  <h2>Sudah dikerjakan saat membuat v8</h2>
+  <ul class="clean done">
+    <li>Clone bersih v7 d0c8a81 → “sistem audit v8” (96M; tanpa node_modules/.venv), branch v8-main.</li>
+    <li>Bawa .env, frontend/.env.local, backend/data (2.8M) agar bisa langsung jalan setelah install.</li>
+    <li>Remote origin → di-rename v7source (sumber cherry-pick).</li>
+    <li>Roadmap v7 diarsipkan; roadmap v8 (ini) dibuat.</li>
+  </ul>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--green)"></span> selesai / dipertahankan</span>
+    <span><span class="dot" style="background:var(--amber)"></span> baru di v8</span>
+    <span><span class="dot" style="background:#C3C6DA"></span> ☐ belum dikerjakan</span>
+  </div>
+</section>
+
+<footer>
+  INTEGRAL · Workspace Pengawasan Inspektorat II Kementerian Komunikasi dan Digital RI · Roadmap v8 (16 Juni 2026)
+</footer>
+
+</div>
+</body>
+</html>

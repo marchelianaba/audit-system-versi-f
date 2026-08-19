@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rencana Implementasi — Skill Pengawasan Lain | Audit AI v7</title>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-light: #2c5282;
+    --accent: #d69e2e;
+    --skill: #6b46c1;
+    --pipe: #2b6cb0;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --muted: #718096;
+    --green: #2f855a;
+    --amber: #b7791f;
+    --red: #c53030;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px 80px; }
+  header.hero { background: linear-gradient(135deg, var(--primary), var(--skill)); color: #fff; padding: 40px 0 32px; margin-bottom: 28px; }
+  header.hero .wrap { padding-bottom: 0; }
+  header.hero h1 { margin: 0 0 6px; font-size: 28px; }
+  header.hero .sub { opacity: .9; font-size: 14px; }
+  header.hero .meta { margin-top: 14px; font-size: 13px; opacity: .8; }
+  h2 { font-size: 22px; margin: 40px 0 4px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  h2 .tag { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; vertical-align: middle; margin-left: 8px; color:#fff; }
+  h3 { font-size: 17px; margin: 22px 0 8px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  code { background: #edf2f7; padding: 1px 6px; border-radius: 4px; font-size: 13px; font-family: "SF Mono", Menlo, Consolas, monospace; }
+  .lead { font-size: 15px; color: var(--muted); }
+  .decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; margin: 18px 0; }
+  .decision { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--skill); border-radius: 10px; padding: 14px 16px; }
+  .decision b { display: block; color: var(--primary); margin-bottom: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; }
+  .decision span { font-size: 14.5px; }
+  .flow { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin: 16px 0; overflow-x: auto; }
+  .flow-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .node { border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; background: #fbfdff; min-width: 96px; text-align: center; }
+  .node.app { border-color: var(--skill); background: #f3edfb; }
+  .node.pipe { border-color: var(--pipe); background: #ebf4ff; }
+  .node.out { border-color: var(--green); background: #f0fff4; }
+  .arrow { color: var(--muted); font-weight: 700; font-size: 18px; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 14px; background: #fff; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #edf2f7; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+  .phase { border-left: 4px solid var(--pipe); }
+  .phase.b { border-left-color: var(--accent); }
+  .phase.c { border-left-color: var(--green); }
+  .pill { display:inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 9px; border-radius: 999px; color:#fff; }
+  .pill.fa { background: var(--pipe); } .pill.fb { background: var(--amber); } .pill.fc { background: var(--green); }
+  .gap { background:#fff5f5; border:1px solid #fc8181; border-radius:8px; padding:10px 14px; margin:10px 0; }
+  .gap b { color: var(--red); }
+  .ok { color: var(--green); font-weight:600; }
+  .note { background:#fffaf0; border:1px solid #f6e05e; border-radius:8px; padding:10px 14px; margin:12px 0; font-size:14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>Rencana Implementasi — Skill Pengawasan Lain</h1>
+    <div class="sub">Memperluas Audit AI v7 dari 2 skill (RKA-K/L &amp; Pengadaan) ke seluruh keluarga skill <code>audit-system-v4</code></div>
+    <div class="meta">Inspektorat II, Komdigi · Pendekatan <b>Hybrid</b> · Pilot <b>audit-kinerja</b> · Output <b>KKSA v7 dulu</b></div>
+  </div>
+</header>
+<div class="wrap">
+
+  <h2>1. Ringkasan &amp; Keputusan</h2>
+  <p class="lead">Anda menambahkan folder <code>skills/</code> (22 entri dari sistem cowork lama). v7 saat ini hanya mengenal 2 skill. Dokumen ini merencanakan satu <b>mesin skill generik (criteria-driven)</b> sehingga skill pengawasan lain bisa dijalankan tanpa membangun pipeline Python baru per skill.</p>
+  <div class="decisions">
+    <div class="decision"><b>Pendekatan</b><span><b>Hybrid.</b> Bangun mesin generik dulu; skill yang sering dipakai "digraduasi" jadi pipeline deterministik kemudian (sesuai meta-skill <code>graduasi-skill-spesifik</code>).</span></div>
+    <div class="decision"><b>Pilot</b><span><b>audit-kinerja.</b> Skill naratif KKSA penuh (kondisi→sebab→akibat→rekomendasi) + survey pendahuluan. Cocok untuk memvalidasi reuse renderer KKP/LHP v7.</span></div>
+    <div class="decision"><b>Output</b><span><b>KKSA v7 dulu.</b> Pakai ulang <code>append_temuan</code> → <code>render_kkp</code>/<code>render_lhp</code>. Format asli (LHE/LHR-tabular/Memo) disusulkan di Fase C.</span></div>
+  </div>
+
+  <h2>2. Apa yang ada di <code>skills/</code></h2>
+  <table>
+    <tr><th>Keluarga</th><th>Anggota</th><th>Sifat</th></tr>
+    <tr><td><b>5 skill "umum"</b></td><td>audit-, reviu-, pemantauan-, evaluasi-, konsultansi-umum</td><td>Criteria-driven: auditor unggah kriteria + objek saat penugasan</td></tr>
+    <tr><td><b>11 skill spesifik</b></td><td>audit-kinerja, audit-pengadaan, evaluasi-sakip/spip/MR/RB, kepatuhan-saipi, konsultasi-/pemantauan-pengadaan, pemantauan-tindak-lanjut, reviu-rka-kl, reviu-pengadaan</td><td>SKILL.md + references; sebagian punya checklist; cocok 1:1 dengan folder <code>wiki/temuan-patterns/</code></td></tr>
+    <tr><td><b>1 meta-skill</b></td><td>graduasi-skill-spesifik</td><td>Auto-generate skill baru dari pola penugasan (Fase C)</td></tr>
+    <tr><td><b>Shared</b></td><td>shared-kinerja-references, shared-pbj-references, panduan-format-umum/PANDUAN.md</td><td>Referensi bersama + rule-book elemen temuan per jenis</td></tr>
+  </table>
+
+  <h2>3. Lima celah integrasi <span class="tag" style="background:var(--red)">harus ditutup</span></h2>
+  <div class="gap"><b>G1 — v7 hanya kenal 2 skill.</b> <code>Skill</code> enum (models.py) + skema (schemas.py) + dropdown frontend hardcode <code>reviu-rka-kl</code>/<code>reviu-pengadaan</code>.</div>
+  <div class="gap"><b>G2 — SKILL.md tak pernah dimuat.</b> Agen AT/KT mengikuti <code>prompts/anggota_tim.md</code> &amp; <code>ketua_tim.md</code> (berbentuk RKA/PBJ), bukan file skill. Prosedur kaya di <code>skills/</code> = "dead weight" bagi v7.</div>
+  <div class="gap"><b>G3 — Tak ada pipeline deterministik</b> untuk skill lain (hanya RKA/PBJ punya <code>digest_*</code>/<code>render_*</code>). Sebagian besar skill bersifat prosedural; hanya <code>evaluasi-sakip</code> membawa scripts.</div>
+  <div class="gap"><b>G4 — Path menunjuk <code>audit-system-v4/...</b></code> di 17 SKILL.md (mis. <code>audit-system-v4/scripts/...</code>, <code>/checklists/...</code>) — tidak resolve di layout v7.</div>
+  <div class="gap"><b>G5 — Format output beda per jenis</b> (PANDUAN.md): Audit/Eval-Kinerja = KKSA penuh; Reviu SAKIP/SPIP = tabel per-kriteria tanpa "sebab"; Eval-RB = tabel 4 dimensi; Konsultansi = memo. Renderer v7 sekarang berasumsi KKSA.</div>
+  <p class="ok">✓ Sudah beres lebih dulu: <code>list_temuan_patterns</code> kini folder-driven (semua 12 kategori pattern terbaca), dan duplikat <code>RKA-05 1.md</code> dihapus.</p>
+
+  <h2>4. Arsitektur target</h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="node app">Skill Registry<br><span class="small muted">folder-driven</span></div>
+      <span class="arrow">→</span>
+      <div class="node app">Skill Loader<br><span class="small muted">load_skill / read_skill_reference</span></div>
+      <span class="arrow">→</span>
+      <div class="node">Agen AT/KT<br><span class="small muted">prompt generik + ikuti SKILL.md</span></div>
+      <span class="arrow">→</span>
+      <div class="node pipe">append_temuan</div>
+      <span class="arrow">→</span>
+      <div class="node out">render KKP/LHP<br><span class="small muted">KKSA (reuse)</span></div>
+    </div>
+  </div>
+  <p>Dua jalur input hidup berdampingan:</p>
+  <ul>
+    <li><b>Jalur pipeline</b> (RKA/PBJ, sudah ada): upload TOR/RAB/KAK → digest V6 → <code>_INGESTED</code>.</li>
+    <li><b>Jalur criteria-driven</b> (skill lain): auditor unggah <code>kriteria/</code> + <code>objek/</code> → <b>tanpa digest</b>, langsung READY → agen baca via <code>read_pdf_page</code> + ikuti prosedur SKILL.md.</li>
+  </ul>
+  <div class="note"><b>Prinsip dipertahankan:</b> V6 tetap <b>read-only</b> — skill baru hidup di path milik app (<code>APP_SKILLS_PATH</code>), bukan di <code>backend/v6/</code>. Tidak ada skema DB baru yang wajib (skill sudah disimpan sebagai <code>String</code>; cukup longgarkan validasi enum).</div>
+
+  <h2>5. Fase &amp; pekerjaan</h2>
+
+  <div class="card phase">
+    <h3><span class="pill fa">FASE A</span> &nbsp;Fondasi — registry &amp; loader skill</h3>
+    <table>
+      <tr><th>#</th><th>Pekerjaan</th><th>Berkas utama</th></tr>
+      <tr><td>A1</td><td>Config <code>APP_SKILLS_PATH</code> (default <code>./skills</code>); .env.example; normalisasi referensi <code>audit-system-v4/</code> → relatif folder skill (resolver, bukan rewrite massal).</td><td><code>config.py</code>, <code>.env.example</code></td></tr>
+      <tr><td>A2</td><td>Modul <b>skill registry</b>: discover skill dari folder; parse frontmatter SKILL.md (<code>name, jenis, fungsi, output, auto_execute</code>). Longgarkan <code>Skill</code> enum → validasi dinamis terhadap registry (frontend dropdown ikut dinamis via endpoint).</td><td><code>skills_registry.py</code> (baru), <code>models.py</code>, <code>schemas.py</code></td></tr>
+      <tr><td>A3</td><td>Tools agen (path-safe, di-cap): <code>list_available_skills</code>, <code>load_skill(skill)</code> → body SKILL.md + daftar references, <code>read_skill_reference(skill, ref)</code>.</td><td><code>tools/skill_tools.py</code> (baru), <code>tools/__init__.py</code></td></tr>
+      <tr><td>A4</td><td>Prompt addendum AT/KT: "Bila skill ≠ reviu-rka-kl/pengadaan → panggil <code>load_skill(skill)</code> dulu dan ikuti prosedur + references-nya."</td><td><code>prompts/anggota_tim.md</code>, <code>prompts/ketua_tim.md</code></td></tr>
+      <tr><td>A5</td><td>Endpoint <code>GET /skills</code> (daftar skill aktif untuk dropdown) + verifikasi import in-process.</td><td><code>routes/skills.py</code> (baru), <code>lib/api.ts</code></td></tr>
+    </table>
+  </div>
+
+  <div class="card phase b">
+    <h3><span class="pill fb">FASE B</span> &nbsp;Pilot — audit-kinerja E2E</h3>
+    <table>
+      <tr><th>#</th><th>Pekerjaan</th><th>Berkas utama</th></tr>
+      <tr><td>B1</td><td>Izinkan buat penugasan <code>skill=audit-kinerja</code> (dropdown dinamis dari <code>/skills</code>; backend terima).</td><td><code>penugasan/page.tsx</code>, <code>routes/penugasan.py</code></td></tr>
+      <tr><td>B2</td><td>Input criteria-driven: dukung jenis <code>KRITERIA</code>/<code>OBJEK</code> → status READY tanpa digest (logika "non-digestible → READY" sudah ada; tambah klasifikasi + subfolder).</td><td><code>storage.py</code> (<code>classify_doc_by_filename</code>, <code>target_subfolder_for</code>)</td></tr>
+      <tr><td>B3</td><td>Longgarkan gate <code>context_readiness</code>: ready = sasaran terisi <b>dan</b> (ada <code>_INGESTED</code> <b>atau</b> ada kriteria+objek). Generate Context baca SKILL.md + kriteria + objek + sasaran → <code>context.md</code>.</td><td><code>storage.py</code>, <code>prompts/anggota_tim.md</code> (MODE:CONTEXT)</td></tr>
+      <tr><td>B4</td><td>KKP via <code>append_temuan</code> (KKSA cocok untuk audit-kinerja). LHP: template generik (<code>template-lha-generic.docx</code>) atau parametrasi judul; pasang ke <code>render_lhp</code>.</td><td><code>tools/kkp_tools.py</code>, <code>tools/lhr_tools.py</code>, <code>templates/</code></td></tr>
+      <tr><td>B5</td><td>QC SAIPI reuse apa adanya (sudah skill-neutral). Pattern temuan AK-17..22 sudah terbaca via registry pattern.</td><td><code>tools/kkp_tools.py</code> (run_qc_kkp)</td></tr>
+      <tr><td>B6</td><td><b>Verifikasi E2E</b> in-process: buat penugasan audit-kinerja, unggah kriteria+objek dummy, Generate Context, append 1–2 temuan, render KKP+LHP, QC PASS.</td><td>tes /tmp ASGI</td></tr>
+    </table>
+    <p class="small muted">Catatan pilot: audit-kinerja butuh dokumen kriteria/objek dummy. Tidak memalsukan angka regulasi — pakai placeholder yang jelas bertanda "[contoh]".</p>
+  </div>
+
+  <div class="card phase c">
+    <h3><span class="pill fc">FASE C</span> &nbsp;Roll-out &amp; penyempurnaan</h3>
+    <table>
+      <tr><th>#</th><th>Pekerjaan</th></tr>
+      <tr><td>C1</td><td>Onboard skill spesifik sisanya — karena mesin sudah generik, cukup: folder skill + pattern temuan (sudah ada) + (opsional) template. Tidak ada kode per-skill.</td></tr>
+      <tr><td>C2</td><td>UX skill "umum": panel unggah <code>kriteria/</code> di tab Konteks/Dokumen + petunjuk "kriteria belum diunggah".</td></tr>
+      <tr><td>C3</td><td><b>Format output asli</b> per PANDUAN.md: LHE (evaluasi), LHR-tabular SAKIP/SPIP, tabel 4-dimensi RB, Memo Konsultansi. Renderer/template per jenis + flag <code>elemen_temuan</code> (mana yang wajib).</td></tr>
+      <tr><td>C4</td><td>Integrasi meta-skill <code>graduasi-skill-spesifik</code>: tombol "Graduasikan" pada penugasan matang → draft folder skill di <code>skills/_draft/</code> untuk direviu manusia.</td></tr>
+      <tr><td>C5</td><td>Graduasi skill panas → pipeline deterministik (mis. evaluasi-sakip pakai scripts <code>extract_lke</code>/<code>fill_lke_apip</code> yang sudah dibawa).</td></tr>
+    </table>
+  </div>
+
+  <h2>6. Risiko &amp; keputusan terbuka</h2>
+  <table>
+    <tr><th>Hal</th><th>Catatan / mitigasi</th></tr>
+    <tr><td>Longgarkan <code>Skill</code> enum → string</td><td>Kolom DB sudah <code>String(40)</code>; risiko rendah. Validasi pindah ke registry. Perlu jaga nilai lama tetap valid.</td></tr>
+    <tr><td>Commit folder <code>skills/</code>?</td><td>Berisi <code>.pdf</code>/<code>.xlsx</code>/<code>__pycache__</code>. Saran: gitignore <code>__pycache__</code>; putuskan apakah PDF besar di-commit atau di-ignore seperti <code>llm-wiki/</code>.</td></tr>
+    <tr><td>Path <code>audit-system-v4/</code></td><td>Pakai resolver (loader memetakan prefiks → folder skill) daripada rewrite 17 file; lebih tahan banting.</td></tr>
+    <tr><td>Kualitas tanpa pipeline</td><td>Skill naratif lebih bergantung pada agen → andalkan pattern temuan + references + QC SAIPI sebagai rambu; graduasikan bila perlu reproducibility.</td></tr>
+    <tr><td>Halusinasi regulasi</td><td>Wajib <code>get_konteks('regulasi')</code> + references skill sebagai sumber; jangan mengarang pasal/angka.</td></tr>
+  </table>
+
+  <h2>7. Bukan tujuan (sekarang)</h2>
+  <ul>
+    <li>Tidak mengubah V6 (read-only) maupun pipeline RKA/PBJ yang sudah jalan.</li>
+    <li>Tidak membangun semua format output asli di awal (Fase C).</li>
+    <li>Tidak otomatis menjalankan <code>auto_execute</code> skill cowork (mis. <code>run_batch.py</code>) sampai jalur graduasi siap.</li>
+    <li>Tidak memalsukan kriteria/angka regulasi untuk demo.</li>
+  </ul>
+
+  <p class="small muted" style="margin-top:30px">Audit AI v7 · rencana skill pengawasan · disusun untuk persetujuan sebelum implementasi. Setelah disetujui: mulai Fase A (registry + loader), lalu pilot audit-kinerja.</p>
+
+</div>
+</body>
+</html>

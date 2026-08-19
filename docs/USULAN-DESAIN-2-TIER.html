@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desain INTEGRAL — Tiga Artefak (Freeze · FREE · FULL)</title>
+<style>
+  :root{
+    --primary:#4f46e5; --primary-dark:#3730a3; --primary-soft:#eef2ff;
+    --ink:#1e293b; --ink-2:#475569; --muted:#94a3b8;
+    --surface:#fff; --bg:#f1f5f9; --line:#e2e8f0;
+    --good:#047857; --good-bg:#ecfdf5; --good-line:#a7f3d0;
+    --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
+    --crit:#b91c1c; --crit-bg:#fef2f2; --crit-line:#fecaca;
+    --plan:#1d4ed8; --plan-bg:#eff6ff; --plan-line:#bfdbfe;
+    --full:#6d28d9; --full-bg:#f5f3ff; --free:#0369a1; --free-bg:#f0f9ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.6;padding:0 0 80px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  header{background:linear-gradient(135deg,#eef2ff 0%,#fff 55%,#f5f3ff 100%);
+         border-bottom:1px solid var(--line);padding:38px 0 28px;margin-bottom:26px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--primary);font-weight:700;margin-bottom:8px}
+  h1{font-size:31px;line-height:1.2;color:var(--primary-dark);margin-bottom:10px}
+  h2{font-size:21px;color:var(--primary-dark);margin:36px 0 6px;padding-top:20px;border-top:2px solid var(--line)}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+          border-radius:7px;background:var(--primary);color:#fff;font-size:13px;margin-right:9px;vertical-align:2px}
+  h3{font-size:15.5px;color:var(--ink);margin:22px 0 8px}
+  p{margin:10px 0;color:var(--ink-2);font-size:14.5px}
+  .lead{font-size:15.5px;color:var(--ink)}
+  strong{color:var(--ink)}
+  code{background:#f1f5f9;border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#334155}
+  ul,ol{margin:10px 0 10px 22px} li{font-size:14.5px;color:var(--ink-2);margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--surface);
+        border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{background:var(--primary-soft);color:var(--primary-dark);text-align:left;padding:10px 13px;
+     font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:10px 13px;border-top:1px solid var(--line);color:var(--ink-2);vertical-align:top}
+  td strong{color:var(--ink)} .scroll{overflow-x:auto}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:18px 20px;margin:14px 0}
+  .callout{border-radius:11px;padding:18px 20px;margin:18px 0;border:1px solid}
+  .c-crit{background:var(--crit-bg);border-color:var(--crit-line)}
+  .c-good{background:var(--good-bg);border-color:var(--good-line)}
+  .c-warn{background:var(--warn-bg);border-color:var(--warn-line)}
+  .c-plan{background:var(--plan-bg);border-color:var(--plan-line)}
+  .callout h3{margin-top:0} .c-crit h3{color:var(--crit)} .c-good h3{color:var(--good)}
+  .c-warn h3{color:var(--warn)} .c-plan h3{color:var(--plan)}
+  .callout p,.callout li{font-size:14px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .t-est{background:var(--warn-bg);color:var(--warn)} .t-ada{background:var(--good-bg);color:var(--good)}
+  .t-baru{background:var(--crit-bg);color:var(--crit)} .t-new{background:#f5f3ff;color:#6d28d9}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  .tier{border-radius:12px;padding:18px 20px;border:2px solid}
+  .tier.full{background:var(--full-bg);border-color:#ddd6fe}
+  .tier.free{background:var(--free-bg);border-color:#bae6fd}
+  .tier h3{margin:0 0 4px;font-size:17px}
+  .tier.full h3{color:var(--full)} .tier.free h3{color:var(--free)}
+  .tier .who{font-size:12.5px;color:var(--ink-2);margin-bottom:10px}
+  .tier ul{margin-left:18px} .tier li{font-size:13.5px}
+  .flow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:16px 0}
+  .fbox{flex:1;min-width:132px;background:var(--primary-soft);border:1.5px solid #c7d2fe;
+        border-radius:9px;padding:12px;text-align:center}
+  .fbox b{display:block;font-size:13px;color:var(--primary-dark)} .fbox span{font-size:11.5px;color:var(--ink-2)}
+  .arr{font-size:17px;color:var(--primary);font-weight:700}
+  .yes{color:var(--good);font-weight:700} .no{color:var(--crit);font-weight:700}
+  .chg{background:#fff;border-left:4px solid var(--primary);border-radius:0 8px 8px 0;
+       padding:10px 14px;margin:8px 0;font-size:14px}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Desain · Revisi 3 — struktur tiga artefak</div>
+    <h1>INTEGRAL — Tiga Artefak</h1>
+    <p class="lead">Satu titik <strong>BEKU</strong> (v10 hari ini) menjadi induk dua turunan: <strong>FREE</strong> — fork ramping tanpa LKE &amp; tanpa wiki-sebagai-fitur, untuk Inspektorat I–IV via <code>simwasv2.komdigi.go.id</code>; dan <strong>FULL</strong> — lanjutan untuk tim Inspektorat II dengan tampilan baru ala Claude Cowork.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- 0 -->
+  <h2><span class="num">0</span>Yang Berubah dari Revisi Sebelumnya</h2>
+  <div class="chg"><strong>TIGA artefak, bukan dua.</strong> Versi v10 hari ini <strong>dibekukan</strong> sebagai induk bersama; FREE dan FULL adalah dua turunan darinya. Lihat §2 — ini menentukan ke mana perbaikan mendarat.</div>
+  <div class="chg"><strong>Arsitektur → FORK TERPISAH.</strong> Revisi 1 menyarankan satu basis kode dua deployment;
+     Anda memutuskan <strong>fork</strong>. Desain ini mengikuti keputusan itu — lihat §2 untuk cara membuat fork tetap murah dirawat.</div>
+  <div class="chg"><strong>FREE tanpa wiki &amp; pattern sebagai <em>fitur</em> — tetapi isinya DIINJEKSIKAN ke skill.</strong>
+     Pengetahuan wiki (pattern, glossary, pola berulang, template) di-<em>bake-in</em> jadi berkas referensi skill
+     saat fork dibuat, lalu <strong>dibekukan</strong>: FREE tidak ikut ter-update saat wiki FULL berubah. Lihat §4.</div>
+  <div class="chg"><strong>Lingkup = Inspektorat I–IV</strong>, bukan lintas-K/L. Skala jauh lebih kecil; angka biaya &amp; kuota disesuaikan.</div>
+  <div class="chg"><strong>Isolasi antar-Inspektorat SUDAH DIBANGUN &amp; TERUJI</strong> (§6) — di Revisi 1 masih berstatus "belum ada".</div>
+  <div class="chg"><strong>FULL: tampilan baru ala Claude Cowork</strong>, dideploy sendiri — lihat §7.</div>
+
+  <!-- 1 -->
+  <h2><span class="num">1</span>Dua Turunan (dari titik beku)</h2>
+  <div class="two">
+    <div class="tier full">
+      <h3>⚡ FULL</h3>
+      <div class="who">Tim Inspektorat II · lanjutan dari BEKU · UI baru ala Claude Cowork</div>
+      <ul>
+        <li><strong>19 skill</strong> termasuk rezim <strong>LKE</strong> (SPIP · SAKIP · RB)</li>
+        <li><strong>Wiki + 104 pattern temuan</strong> + konteks organisasi</li>
+        <li>Penilaian per-aspek · analisis inkremental multi-unit</li>
+        <li>CACM multi-dimensi · Chat AI wiki · kelola Knowledge</li>
+        <li>Model kuat, kedalaman penuh, kuota longgar</li>
+      </ul>
+    </div>
+    <div class="tier free">
+      <h3>🌐 FREE</h3>
+      <div class="who">Inspektorat I, III, IV · via SIMWAS v2 · fork dari BEKU</div>
+      <ul>
+        <li>Subset skill <strong>non-LKE</strong></li>
+        <li><span class="no">Tanpa</span> LKE · <span class="no">tanpa</span> wiki &amp; pattern sebagai <em>fitur hidup</em></li>
+        <li><strong>Pengetahuan wiki di-injeksikan ke skill</strong> (pattern, glossary, template) — <strong>beku</strong>, tak ikut update</li>
+        <li>Alur pengawasan normal: KP → PKP → unggah → analisis → HITL → KKP → LHP</li>
+        <li>Model hemat, kedalaman dibatasi, kuota ketat</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="num">2</span>Tiga Artefak &amp; Hubungannya</h2>
+  <p>Klarifikasi penting: yang dibangun bukan "dua versi", melainkan <strong>satu titik beku + dua turunan</strong>.
+     Menetapkan ini di depan menjawab pertanyaan yang paling sering menimbulkan kekacauan nanti:
+     <em>kalau ada perbaikan, mendarat di mana?</em></p>
+
+  <div class="flow">
+    <div class="fbox" style="background:#f8fafc;border-color:#cbd5e1"><b>❄ BEKU — v10 hari ini</b><span>tag versi · induk bersama · dipakai tim sampai FULL siap</span></div>
+    <div class="arr">→</div>
+    <div class="fbox" style="background:var(--free-bg);border-color:#bae6fd"><b>🌐 FREE</b><span>fork ramping · Inspektorat I–IV</span></div>
+    <div class="fbox" style="background:var(--full-bg);border-color:#ddd6fe"><b>⚡ FULL</b><span>lanjutan · UI ala Cowork</span></div>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <tr><th>Artefak</th><th>Sifat</th><th>Peran</th><th>Siapa memakai</th></tr>
+    <tr><td><strong>❄ BEKU (v10 hari ini)</strong></td>
+        <td><strong>Tidak dikembangkan lagi</strong> — ditandai <em>tag</em> versi, isinya tetap</td>
+        <td>(a) <strong>induk</strong> kedua turunan · (b) <strong>yang jalan sekarang</strong> untuk tim Anda sampai FULL siap ·
+            (c) <strong>pembanding mutu</strong> saat menilai FREE</td>
+        <td>Tim Inspektorat II (sementara)</td></tr>
+    <tr><td><strong>🌐 FREE</strong></td>
+        <td>Repo terpisah, dicabang dari BEKU</td>
+        <td>Fitur dasar; wiki diinjeksikan lalu dibekukan (§4)</td>
+        <td>Inspektorat I, III, IV via SIMWAS v2</td></tr>
+    <tr><td><strong>⚡ FULL</strong></td>
+        <td><strong>Lanjutan</strong> dari BEKU — pengembangan aktif</td>
+        <td>Mesin tetap; <strong>tampilan diganti</strong> ala Claude Cowork; fitur lanjutan terus bertambah</td>
+        <td>Tim Inspektorat II (tujuan akhir)</td></tr>
+  </table>
+  </div>
+
+  <div class="callout c-plan">
+    <h3>Ke mana perbaikan mendarat?</h3>
+    <p><strong>BEKU tidak menerima perbaikan</strong> — itu maksudnya dibekukan. Karena itu:</p>
+    <ul>
+      <li><strong>Perbaikan mesin, doktrin, mutu → dikerjakan di FULL.</strong> FULL adalah kelanjutan alami v10, jadi ia menjadi <strong>hulu (upstream)</strong>.</li>
+      <li><strong>FREE menarik dari FULL secara selektif</strong>, satu arah, dan tidak pernah mengirim balik.</li>
+      <li>Bila ada <strong>cacat kritis</strong> saat FULL belum siap dan tim masih memakai BEKU: perbaiki di FULL, lalu terbitkan
+          <strong>tag baru</strong> (mis. <code>v10.0.1</code>) — jangan mengubah tag lama. Dengan begitu "beku" tetap bermakna.</li>
+    </ul>
+    <p style="margin-bottom:0"><strong>Aturan emas:</strong> FREE hanya <em>mencabut</em> dan tak pernah menambah kemampuan
+       yang tak ada di FULL. Selama ini dipegang, penarikan tetap sederhana — dan pengalaman v10.1
+       (26 berkas menyimpang dalam ±1 minggu karena perubahan terjadi di <em>kedua</em> sisi) tidak terulang.</p>
+  </div>
+
+  <div class="callout c-warn">
+    <h3>Titik beku harus ditetapkan SETELAH isolasi masuk</h3>
+    <p style="margin-bottom:0">Isolasi Inspektorat (§6) dibutuhkan <strong>oleh keduanya</strong> — FREE memisahkan
+       Inspektorat I/III/IV, FULL memisahkan data tim Anda. Kalau titik beku diambil sebelum isolasi digabungkan,
+       kedua turunan lahir tanpa pengaman itu dan harus menambalnya sendiri-sendiri.
+       <strong>Urutannya: gabungkan isolasi ke <code>main</code> → beri tag → baru fork.</strong>
+       Saat ini isolasi masih di branch <code>feat/isolasi-inspektorat</code> dan <strong>belum digabung</strong>.</p>
+  </div>
+
+  <!-- 3 -->
+  <h2><span class="num">3</span>Matriks Fitur</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>Kemampuan</th><th style="width:90px">FULL</th><th style="width:90px">FREE</th><th>Catatan</th></tr>
+    <tr><td><strong>Isi</strong> wiki &amp; pattern (104 pattern, glossary, pola berulang, template)</td>
+        <td class="yes">✓ hidup</td><td class="yes">✓ <strong>beku</strong></td>
+        <td><strong>Diinjeksikan ke skill</strong> saat fork — FREE tetap dapat manfaatnya, tapi tidak ikut update (§4)</td></tr>
+    <tr><td><strong>Wiki sebagai fitur</strong> (cari, kelola, tulis-balik, update)</td><td class="yes">✓</td><td class="no">✗</td>
+        <td>Tool <code>search_wiki</code>/<code>list_temuan_patterns</code>, menu Knowledge, Chat, CACM-dari-wiki dicabut</td></tr>
+    <tr><td>Skill rezim <strong>LKE</strong> (SPIP · SAKIP · RB)</td><td class="yes">✓</td><td class="no">✗</td><td>Paling mahal &amp; paling rawan</td></tr>
+    <tr><td>Reviu/pemantauan pengadaan · Reviu RKA-K/L · skill <em>*-umum</em></td><td class="yes">✓</td><td class="yes">✓</td><td>Inti layanan FREE</td></tr>
+    <tr><td>Reviu keuangan (LK·PIPK·PNBP) · audit-kinerja · evaluasi-MR</td><td class="yes">✓</td><td class="no">✗</td><td>Spesialistis</td></tr>
+    <tr><td><strong>Referensi regulasi bawaan skill</strong> (54 berkas)</td><td class="yes">✓</td><td class="yes">✓</td><td><strong>Tetap ada</strong> — dasar hukum tidak hilang (§4)</td></tr>
+    <tr><td>Unggah PDF/Word/Excel + <strong>OCR</strong> hasil scan</td><td class="yes">✓</td><td class="yes">✓</td><td>Kebutuhan dasar</td></tr>
+    <tr><td>Analisis agen → temuan K/K/S/A</td><td class="yes">✓</td><td class="yes">✓</td><td>Inti</td></tr>
+    <tr><td>HITL (Setujui/Edit/Tolak)</td><td class="yes">✓</td><td class="yes">✓ wajib</td><td>Tidak boleh dilewati (§5)</td></tr>
+    <tr><td>KKP · LHP · QC SAIPI</td><td class="yes">✓ lengkap</td><td class="yes">✓ dasar</td><td>QC tetap jalan</td></tr>
+    <tr><td>Penilaian per-aspek · inkremental multi-unit</td><td class="yes">✓</td><td class="no">✗</td><td>Fitur mutu mahal</td></tr>
+    <tr><td>CACM · Chat AI · kelola Knowledge · tulis-balik wiki</td><td class="yes">✓</td><td class="no">✗</td><td>Semuanya bersandar wiki</td></tr>
+    <tr><td>Isolasi antar-Inspektorat</td><td class="yes">✓</td><td class="yes">✓</td><td><span class="tag t-ada">SUDAH DIBANGUN</span> (§6)</td></tr>
+  </table>
+  </div>
+
+  <!-- 4 -->
+  <h2><span class="num">4</span>Injeksi Wiki → Skill (Snapshot Beku)</h2>
+  <p>Alih-alih membuang pengetahuan wiki, isinya <strong>dipindahkan ke dalam skill</strong> saat fork dibuat.
+     FREE tetap memakai pattern, glossary, dan template — hanya saja <strong>versi beku</strong>: tidak ikut
+     berubah ketika wiki di FULL diperbarui.</p>
+
+  <div class="callout c-good">
+    <h3>✓ Mengapa ini rapi secara teknis</h3>
+    <p style="margin-bottom:0">Mekanismenya sudah tersedia — tidak perlu tool baru. Pembaca referensi skill
+       (<code>list_skill_references</code>) memindai folder <code>references/</code> secara rekursif, sehingga
+       <strong>berkas apa pun yang diinjeksikan otomatis terlihat oleh agen</strong> lewat
+       <code>read_skill_reference</code>. Ditambah lagi, <strong>pattern sudah tersusun per skill</strong>
+       (<code>wiki/temuan-patterns/&lt;skill&gt;/</code>) sehingga pemetaannya satu-lawan-satu.</p>
+  </div>
+
+  <h3>Peta injeksi</h3>
+  <div class="scroll">
+  <table>
+    <tr><th>Sumber (wiki FULL)</th><th>Tujuan (skill FREE)</th><th>Isi</th></tr>
+    <tr><td><code>wiki/temuan-patterns/&lt;skill&gt;/</code></td>
+        <td><code>skills/&lt;skill&gt;/references/90-pattern-temuan/</code></td>
+        <td><strong>104 pattern</strong> + README ber-index (ID · Judul · Kategori · Severity · Kriteria Baku) —
+            index inilah pengganti statis <code>list_temuan_patterns</code></td></tr>
+    <tr><td><code>wiki/konteks/</code> (glossary-komdigi, pola-temuan-berulang, regulasi-kunci)</td>
+        <td><code>skills/panduan-format-umum/references/</code></td>
+        <td>Pengetahuan lintas-skill. Ditaruh di panduan umum (bukan diduplikasi 19×) karena
+            doktrin sudah merujuk berkas ini dari semua skill</td></tr>
+    <tr><td><code>wiki/templates/kp|pkp/kp-&lt;skill&gt;.md</code></td>
+        <td><code>skills/&lt;skill&gt;/references/91-template-kp.md</code> &amp; <code>92-template-pkp.md</code></td>
+        <td>Menjawab pertanyaan terbuka Revisi 2 — <strong>Tahapan 1–2 tetap punya template</strong></td></tr>
+    <tr><td><code>wiki/konteks/regulasi/</code></td><td>digabung ke referensi skill terkait</td>
+        <td>Pelengkap; dasar hukum utama <strong>sudah</strong> ada di 54 referensi skill</td></tr>
+  </table>
+  </div>
+
+  <div class="callout c-good">
+    <h3>✓ Akibatnya: FREE jauh lebih kuat dari rencana semula</h3>
+    <p>Dengan injeksi, yang benar-benar hilang di FREE tinggal <strong>sifat "hidup"-nya</strong>, bukan isinya:</p>
+    <ul style="margin-bottom:0">
+      <li><strong>Tetap ada</strong> — 104 pattern sebagai hipotesis, glossary Komdigi, pola temuan berulang,
+          template KP/PKP, 54 referensi regulasi, seluruh checklist skill</li>
+      <li><strong>Hilang</strong> — pencarian wiki bebas, konteks penugasan terdahulu (data operasional Itjen II,
+          memang tidak layak dibagikan), tulis-balik pengalaman, dan <strong>pembaruan</strong>: pattern baru
+          yang lahir di FULL tidak otomatis sampai ke FREE</li>
+    </ul>
+  </div>
+
+  <div class="callout c-warn">
+    <h3>Konsekuensi yang harus diterima: pengetahuan FREE menua</h3>
+    <p style="margin-bottom:0">Karena beku, seiring waktu FREE akan tertinggal — misalnya pattern baru dari
+       regulasi terbaru tidak ada di sana. Ini <strong>pilihan sadar</strong>, dan mudah dikelola:
+       saat menarik perbaikan dari FULL (§2), <strong>injeksi cukup dijalankan ulang</strong> bila Anda memang
+       ingin menyegarkan. Dengan kata lain: <strong>pembaruan pengetahuan menjadi keputusan Anda</strong>,
+       bukan sesuatu yang mengalir otomatis.</p>
+  </div>
+
+  <div class="callout c-crit">
+    <h3>⚠ Tetap wajib: varian doktrin</h3>
+    <p>Doktrin sekarang <strong>memerintahkan</strong> memanggil tool yang akan dicabut —
+       <code>read_preload_context</code> ditandai <strong>"WAJIB DIBACA DULU di langkah awal"</strong>,
+       <code>list_temuan_patterns</code> disebut 8× (total 23 sebutan "pattern"). Tanpa penyesuaian,
+       agen FREE akan memanggil tool yang tidak ada → boros giliran, bisa gagal di tengah.</p>
+    <p style="margin-bottom:0"><strong>Penggantinya sederhana:</strong> di varian <code>anggota_tim.md</code> FREE,
+       ubah instruksi "panggil <code>list_temuan_patterns(skill)</code>" menjadi
+       "baca <code>read_skill_reference(skill, 'references/90-pattern-temuan/README.md')</code>", dan hapus
+       langkah preload. Doktrin mutu &amp; anti-mengarang <strong>tidak diubah sama sekali</strong>.</p>
+  </div>
+
+  <h3>Daftar cabut (fitur, bukan isi)</h3>
+  <div class="scroll">
+  <table>
+    <tr><th>Lapis</th><th>Yang dicabut di FREE</th></tr>
+    <tr><td>Tool agen</td><td><code>WIKI_TOOLS</code> (<code>search_wiki</code>, <code>list_temuan_patterns</code>, <code>list_konteks</code>, <code>get_konteks</code>) + <code>read_preload_context</code></td></tr>
+    <tr><td>Doktrin</td><td>varian <code>anggota_tim.md</code>: pattern dibaca via <code>read_skill_reference</code>, langkah preload dihapus</td></tr>
+    <tr><td>Backend</td><td><code>routes/knowledge.py</code> · <code>routes/chat.py</code> · <code>preload_context.py</code> · <code>wiki_promote.py</code> · <code>wiki_writeback.py</code> · jalur "usulan kriteria dari wiki" di CACM</td></tr>
+    <tr><td><strong>Backend — bedah kecil</strong></td>
+        <td><code>routes/penugasan.py</code> <strong>tetap dipakai</strong>, tapi punya 2 sangkutan wiki yang harus dilepas:
+            <strong>(a)</strong> saat penugasan dibuat, sistem otomatis membangun <em>bundle pra-analisis</em> dari wiki di latar
+            (<code>preload_context.build_preload_bundle</code>) → dilewati;
+            <strong>(b)</strong> endpoint <code>sasaran/templates</code> punya mode <code>patterns</code> &amp; <code>writeback</code>
+            → sisakan mode <code>historis</code> saja. Kalau dua titik ini terlewat, FREE error saat membuat penugasan.</td></tr>
+    <tr><td>Frontend</td><td>menu <strong>Knowledge</strong> (pattern · template · kriteria · kelola skill · tulis-balik) + <strong>Chat AI</strong></td></tr>
+    <tr><td>Data</td><td>folder <code>knowledge/wiki/</code> tidak disertakan — <strong>isinya sudah pindah ke skill</strong></td></tr>
+    <tr><td><strong>TETAP disertakan</strong></td><td><code>knowledge/skills/</code> + seluruh references (54 asli + hasil injeksi)</td></tr>
+  </table>
+  </div>
+
+  <!-- 5 -->
+  <h2><span class="num">5</span>Batas yang Tidak Boleh Diturunkan</h2>
+  <div class="callout c-crit">
+    <h3>⚠ Justru makin penting setelah pattern dicabut</h3>
+    <p>Tanpa pattern sebagai pemandu, agen lebih bergantung pada penalarannya sendiri. Di situlah risiko
+       "terdengar meyakinkan tetapi salah" naik. Maka doktrin berikut <strong>WAJIB IDENTIK</strong> di kedua tier:</p>
+    <ul style="margin-bottom:0">
+      <li><strong>Anti-mengarang</strong> — Sebab diisi hanya bila terbukti; jika tidak: "tidak cukup data"</li>
+      <li><strong>"Perlu diverifikasi/diduga" bukan temuan</strong></li>
+      <li><strong>Kutipan sumber wajib</strong> (nama dokumen + halaman)</li>
+      <li><strong>HITL wajib</strong> — temuan berstatus DRAFT sampai auditor menyetujui; tanpa auto-approve</li>
+      <li><strong>QC SAIPI tetap jalan</strong></li>
+      <li><strong>Label keluaran</strong>: "Draf hasil analisis AI — wajib diverifikasi auditor berwenang"</li>
+    </ul>
+  </div>
+
+  <!-- 6 -->
+  <h2><span class="num">6</span>Isolasi Inspektorat I–IV <span class="tag t-ada">SUDAH SELESAI &amp; TERUJI</span></h2>
+  <p>Fondasi yang di Revisi 1 masih "belum ada" kini <strong>sudah dibangun</strong>
+     (branch <code>feat/isolasi-inspektorat</code>) dan akan <strong>ikut terbawa ke fork FREE</strong>.</p>
+  <div class="scroll">
+  <table>
+    <tr><th>Hal</th><th>Hasil</th></tr>
+    <tr><td>Penegakan</td><td>Modul terpusat <code>app/tenancy.py</code> — penyaringan di level SQL untuk daftar; akses objek dijawab <strong>404 (bukan 403)</strong> agar keberadaan penugasan unit lain tidak terkonfirmasi</td></tr>
+    <tr><td>Cakupan</td><td><strong>16 titik akses di 11 berkas rute</strong> (penugasan, agen, dokumen, berkas, administrasi, knowledge, lembar reviu, TLHP, CACM, graduasi)</td></tr>
+    <tr><td>Uji daftar</td><td>Inspektorat II melihat 6 penugasan · Inspektorat III melihat <strong>0</strong></td></tr>
+    <tr><td>Uji akses</td><td>7 endpoint baca + unggah dokumen + jalankan agen + re-ingest + hapus → <strong>404 semua</strong></td></tr>
+    <tr><td>Uji berkas</td><td>Unduh <code>KKP-*.docx</code>: Inspektorat II <strong>200</strong>, Inspektorat III <strong>404</strong></td></tr>
+    <tr><td>Uji dua arah</td><td>Penugasan dibuat PT Inspektorat III → tercatat <code>inspektorat=III</code>, <strong>tak terlihat</strong> Inspektorat II</td></tr>
+  </table>
+  </div>
+
+  <!-- 7 -->
+  <h2><span class="num">7</span>FULL Tier — Tampilan Baru ala Claude Cowork</h2>
+  <p>Anda akan mendeploy FULL sendiri dengan antarmuka baru. Kabar baiknya: <strong>backend sudah siap untuk itu</strong>
+     tanpa perubahan berarti — API-nya sudah <em>UI-agnostik</em> (REST + streaming SSE), dan seluruh doktrin/orkestrasi
+     berada di sisi server, bukan di UI.</p>
+  <div class="scroll">
+  <table>
+    <tr><th>Ciri gaya Cowork</th><th>Dukungan yang sudah ada</th></tr>
+    <tr><td>Percakapan sebagai pusat kerja</td><td><code>GET /agen/{nama}/stream</code> (SSE) + <code>/attach</code> untuk menyambung ulang — analisis berjalan di latar, aman ditinggal pindah tab</td></tr>
+    <tr><td>Artefak/berkas hasil di samping percakapan</td><td><code>/penugasan/{id}/files</code> · <code>/files/download</code> · <code>/files/preview</code></td></tr>
+    <tr><td>Langkah kerja &amp; status terlihat</td><td>Tangga 8 tahapan berbasis sentinel flag + status turunan dari artefak</td></tr>
+    <tr><td>Tinjau &amp; setujui hasil</td><td>HITL: <code>temuan-review</code> (approve/reject/bulk) + log edit</td></tr>
+    <tr><td>Riwayat pekerjaan</td><td><code>AgentRun</code> tersimpan (durasi, jumlah tool call, ringkasan)</td></tr>
+  </table>
+  </div>
+  <p><strong>Implikasi desain:</strong> UI baru cukup menjadi <em>klien</em> API yang sama. Selama begitu, FULL dan FREE
+     tetap berbagi mesin yang identik — dan penarikan perbaikan satu arah (§2) tetap mulus.</p>
+
+  <!-- 8 -->
+  <h2><span class="num">8</span>Rencana Eksekusi Fork FREE</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>Langkah</th><th>Isi</th><th>Selesai bila</th></tr>
+    <tr><td><strong>1a. Gabungkan isolasi</strong></td>
+        <td>Merge <code>feat/isolasi-inspektorat</code> → <code>main</code> (saat ini <strong>belum digabung</strong>)</td>
+        <td>Uji isolasi lulus di <code>main</code></td></tr>
+    <tr><td><strong>1b. BEKUKAN</strong></td>
+        <td>Beri <em>tag</em> versi pada <code>main</code> (mis. <code>v10.0-baseline</code>) — inilah induk bersama &amp; yang dipakai tim sampai FULL siap</td>
+        <td>Tag terbit &amp; ter-push; isinya tidak diubah lagi</td></tr>
+    <tr><td><strong>1c. Titik cabang FREE</strong></td>
+        <td>Fork repo baru dari tag tersebut</td>
+        <td>Repo FREE berdiri, uji isolasi tetap lulus di sana</td></tr>
+    <tr><td><strong>2. INJEKSI wiki → skill</strong></td>
+        <td>Jalankan skrip injeksi (§4): pattern per skill → <code>references/90-pattern-temuan/</code>;
+            konteks global → <code>panduan-format-umum/references/</code>; template KP/PKP → <code>references/91–92</code>.
+            Skrip disimpan di FULL agar bisa <strong>dijalankan ulang</strong> saat ingin menyegarkan FREE</td>
+        <td>Tiap skill FREE punya index pattern; jumlah pattern terinjeksi = jumlah di wiki</td></tr>
+    <tr><td><strong>3. Cabut wiki sebagai fitur</strong></td>
+        <td>Buang <code>WIKI_TOOLS</code> + <code>read_preload_context</code> dari daftar tool agen; buang rute/berkas &amp; menu UI terkait; lepas 2 sangkutan di <code>penugasan.py</code>; jangan sertakan <code>knowledge/wiki/</code></td>
+        <td>Backend menyala tanpa error; <strong>membuat penugasan berhasil</strong>; menu Knowledge &amp; Chat hilang</td></tr>
+    <tr><td><strong>4. Varian doktrin</strong></td>
+        <td><code>anggota_tim.md</code> versi FREE: langkah preload dihapus; <code>list_temuan_patterns</code> diganti
+            <code>read_skill_reference(skill,'references/90-pattern-temuan/README.md')</code>. Doktrin mutu tidak diubah</td>
+        <td>Log tool call membuktikan agen <strong>tidak pernah</strong> memanggil tool yang tak ada, tetapi <strong>tetap membaca pattern</strong></td></tr>
+    <tr><td><strong>5. Batasi skill &amp; kedalaman</strong></td>
+        <td>Aktifkan hanya subset non-LKE; model hemat; batas giliran; matikan penilaian per-aspek &amp; inkremental</td>
+        <td>Satu penugasan uji tuntas; biaya &amp; durasi terukur</td></tr>
+    <tr><td><strong>6. Uji E2E + mutu</strong></td>
+        <td>Jalankan dokumen riil; bandingkan hasil FREE vs FULL pada objek yang sama</td>
+        <td>Selisih mutu diketahui &amp; dapat diterima; doktrin anti-mengarang tetap patuh</td></tr>
+    <tr><td><strong>7. Integrasi SIMWAS</strong></td>
+        <td>SSO + sinkronisasi ST/sasaran; pilot 1 Inspektorat</td>
+        <td>Satu penugasan tuntas dari SIMWAS tanpa intervensi manual</td></tr>
+  </table>
+  </div>
+  <div class="callout c-plan">
+    <h3>Usul urutan uji di langkah 6</h3>
+    <p style="margin-bottom:0">Pakai <strong>objek yang sama</strong> dengan penugasan FULL yang sudah ada
+       (mis. reviu pengadaan TKPPSE): jalankan di FREE, lalu bandingkan jumlah &amp; mutu temuan.
+       Itu memberi <strong>ukuran nyata</strong> "seberapa kurang pintar" FREE — bukan tebakan —
+       dan menjadi dasar menjelaskan keterbatasannya kepada pengguna.</p>
+  </div>
+
+  <!-- 9 -->
+  <h2><span class="num">9</span>Keputusan yang Masih Terbuka</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>#</th><th>Pertanyaan</th><th>Usulan</th></tr>
+    <tr><td>1</td><td>Skill apa saja persisnya di FREE?</td><td>Mulai sempit: <code>reviu-pengadaan</code>, <code>reviu-rka-kl</code>, + <em>*-umum</em></td></tr>
+    <tr><td>2</td><td>Kuota per Inspektorat per bulan?</td><td>Mulai ketat, naikkan berdasarkan data pemakaian</td></tr>
+    <tr><td>3</td><td>Siapa menanggung biaya API FREE?</td><td>Perlu kepastian sejak awal — menentukan model kuota</td></tr>
+    <tr><td>4</td><td>Nama &amp; lokasi repo fork FREE</td><td>Mis. <code>integral-free</code>, privat dulu sampai pilot lolos</td></tr>
+    <tr><td>5</td><td>Template KP/PKP di FREE?</td><td><span class="tag t-ada">TERJAWAB</span> — ikut diinjeksikan ke <code>references/</code> tiap skill (§4). Tahapan 1–2 tetap punya template, tanpa menu kelola/generate AI</td></tr>
+    <tr><td>6</td><td>Dukungan pengguna FREE</td><td>Perlu ditetapkan — tanpa ini pertanyaan jatuh ke tim Anda</td></tr>
+  </table>
+  </div>
+
+  <div class="callout c-good">
+    <h3>✓ Siap dieksekusi</h3>
+    <p style="margin-bottom:0">Pertanyaan terbuka Revisi 2 soal template <strong>sudah terjawab</strong> lewat injeksi. Yang tersisa (skill, kuota, biaya, nama repo, dukungan pengguna) <strong>tidak memblokir</strong> langkah 1–4 — fork, injeksi, pencabutan fitur, dan varian doktrin bisa dikerjakan lebih dulu, lalu Anda tentukan sisanya sebelum langkah 5–7.</p>
+</div>
+
+  <footer>
+    ∫ INTEGRAL · Integrasi Audit Internal — Inspektorat II, Kementerian Komunikasi dan Digital RI<br>
+    Desain dua tier · Revisi 2 · belum ada kode FREE yang dieksekusi
+  </footer>
+</div>
+</body>
+</html>

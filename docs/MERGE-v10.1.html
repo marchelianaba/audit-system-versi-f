@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Merge v10.1 → v10 · INTEGRAL</title>
+<style>
+  :root{
+    --primary:#4f46e5; --primary-dark:#3730a3; --primary-soft:#eef2ff;
+    --ink:#1e293b; --ink-2:#475569; --muted:#94a3b8;
+    --surface:#ffffff; --bg:#f1f5f9; --line:#e2e8f0;
+    --good:#047857; --good-bg:#ecfdf5; --good-line:#a7f3d0;
+    --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
+    --crit:#b91c1c; --crit-bg:#fef2f2; --crit-line:#fecaca;
+    --plan:#1d4ed8; --plan-bg:#eff6ff; --plan-line:#bfdbfe;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.6;padding:0 0 80px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  header{background:linear-gradient(135deg,#eef2ff 0%,#fff 55%,#f5f3ff 100%);
+         border-bottom:1px solid var(--line);padding:40px 0 32px;margin-bottom:32px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+          color:var(--primary);font-weight:700;margin-bottom:8px}
+  h1{font-size:32px;line-height:1.2;color:var(--primary-dark);margin-bottom:10px}
+  .meta{font-size:13px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px}
+  .meta code{background:#fff;border:1px solid var(--line);border-radius:5px;
+             padding:2px 7px;font-size:12px;color:var(--primary-dark)}
+
+  h2{font-size:21px;color:var(--primary-dark);margin:38px 0 4px;
+     padding-top:20px;border-top:2px solid var(--line)}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;
+          width:26px;height:26px;border-radius:7px;background:var(--primary);
+          color:#fff;font-size:13px;margin-right:9px;vertical-align:2px}
+  h3{font-size:15.5px;color:var(--ink);margin:22px 0 8px}
+  p{margin:10px 0;color:var(--ink-2);font-size:14.5px}
+  .lead{font-size:15.5px;color:var(--ink)}
+  strong{color:var(--ink)}
+  code{background:#f1f5f9;border-radius:4px;padding:1px 5px;
+       font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#334155}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:11px;
+        padding:16px;text-align:center}
+  .stat .v{font-size:26px;font-weight:800;color:var(--primary-dark);line-height:1.15}
+  .stat .l{font-size:12px;color:var(--ink-2);margin-top:5px}
+
+  .card{background:var(--surface);border:1px solid var(--line);
+        border-radius:11px;padding:18px 20px;margin:14px 0}
+  .callout{border-radius:11px;padding:18px 20px;margin:18px 0;border:1px solid}
+  .c-crit{background:var(--crit-bg);border-color:var(--crit-line)}
+  .c-good{background:var(--good-bg);border-color:var(--good-line)}
+  .c-warn{background:var(--warn-bg);border-color:var(--warn-line)}
+  .c-plan{background:var(--plan-bg);border-color:var(--plan-line)}
+  .callout h3{margin-top:0}
+  .c-crit h3{color:var(--crit)} .c-good h3{color:var(--good)}
+  .c-warn h3{color:var(--warn)} .c-plan h3{color:var(--plan)}
+  .callout p, .callout li{font-size:14px}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;
+        background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{background:var(--primary-soft);color:var(--primary-dark);text-align:left;
+     padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:10px 13px;border-top:1px solid var(--line);color:var(--ink-2);vertical-align:top}
+  td strong{color:var(--ink)}
+  .scroll{overflow-x:auto}
+
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;
+       border-radius:999px;white-space:nowrap}
+  .t-take{background:var(--good-bg);color:var(--good)}
+  .t-keep{background:var(--plan-bg);color:var(--plan)}
+  .t-rej{background:var(--crit-bg);color:var(--crit)}
+  .t-new{background:#f5f3ff;color:#6d28d9}
+
+  ul,ol{margin:10px 0 10px 22px}
+  li{font-size:14.5px;color:var(--ink-2);margin:5px 0}
+
+  .flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0}
+  .fbox{flex:1;min-width:150px;background:var(--primary-soft);border:1.5px solid #c7d2fe;
+        border-radius:9px;padding:12px;text-align:center}
+  .fbox b{display:block;font-size:13.5px;color:var(--primary-dark)}
+  .fbox span{font-size:11.5px;color:var(--ink-2)}
+  .arr{font-size:17px;color:var(--primary);font-weight:700}
+
+  .proof{counter-reset:p;margin:12px 0 4px}
+  .proof li{margin:9px 0;font-size:14px}
+  .ok::before{content:"✓ ";color:var(--good);font-weight:800}
+  .no::before{content:"✕ ";color:var(--crit);font-weight:800}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);
+         font-size:12.5px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Laporan Teknis · Penggabungan Repositori</div>
+    <h1>Merge v10.1 → v10</h1>
+    <p class="lead">Menggabungkan perbaikan teknis dari <code>marchelianaba/audit-system-v10.1</code>
+       ke dalam sistem ini — dengan menolak satu komponen yang bertentangan dengan doktrin
+       <strong>MODE FULL-AI (tanpa temuan deterministik)</strong>.</p>
+    <div class="meta">
+      <span>Branch: <code>merge/v10.1</code></span>
+      <span>Basis: <code>main @ c6c5543</code></span>
+      <span>5 commit merge</span>
+      <span>26 file inti dibandingkan</span>
+      <span><strong style="color:var(--good)">main TIDAK disentuh</strong></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="stats">
+    <div class="stat"><div class="v" style="color:var(--good)">14</div><div class="l">file diambil dari v10.1</div></div>
+    <div class="stat"><div class="v" style="color:var(--plan)">9</div><div class="l">file dipertahankan lokal</div></div>
+    <div class="stat"><div class="v" style="color:var(--crit)">3</div><div class="l">komponen DITOLAK (doktrin)</div></div>
+    <div class="stat"><div class="v">5/5</div><div class="l">uji regresi lolos</div></div>
+  </div>
+
+  <!-- 1 -->
+  <h2><span class="num">1</span>Situasi &amp; Tantangan</h2>
+  <p>v10.1 adalah <strong>satu commit tunggal</strong> (<code>c3da1e2 "Initial commit"</code>, 27 Jul)
+     hasil <em>squash</em> — <strong>tidak memiliki riwayat git bersama</strong> dengan repositori ini.
+     Akibatnya <code>git merge</code> biasa mustahil (unrelated histories), sehingga penggabungan
+     harus dilakukan <strong>file per file</strong>.</p>
+
+  <div class="card">
+    <h3 style="margin-top:0">Kedua lini bercabang, bukan satu lebih maju</h3>
+    <p>v10.1 bercabang dari lini kerja ini sekitar <strong>19–22 Juli</strong>. Artinya:</p>
+    <ul>
+      <li>v10.1 <strong>sudah memuat</strong> sebagian pekerjaan saya (penilaian per-aspek, pelindung sel-gabung LKE, mode limit langganan, digest office RKA)</li>
+      <li>v10.1 <strong>belum memuat</strong> 5 perbaikan terakhir saya (cakupan dokumen besar, mode fokus LKE, RKA office-suffix, dll.)</li>
+      <li>v10.1 <strong>menambahkan</strong> perbaikan teknis yang belum ada di sini (OCR, render LHP, tahapan sentinel-flag)</li>
+    </ul>
+    <p style="margin-bottom:0"><strong>Kabar baik:</strong> tidak ada perubahan skema basis data —
+       sehingga <strong>tidak perlu migrasi</strong>. Ini menghilangkan risiko terbesar merge.</p>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="num">2</span>Temuan Utama: Temuan Deterministik Ditolak</h2>
+  <div class="callout c-crit">
+    <h3>⚠ Dugaan Anda benar — dan sudah terbukti</h3>
+    <p>v10.1 memasukkan kembali mekanisme <strong>temuan deterministik</strong> yang bertentangan
+       dengan doktrin baru: file <code>prefill_temuan.py</code> beserta dua tool
+       <code>build_draft_temuan_from_anomalies</code> dan <code>read_draft_temuan</code>.
+       Mekanisme ini mengubah <code>anomalies-master.json</code> menjadi temuan
+       <strong>tanpa melibatkan AI</strong>.</p>
+  </div>
+
+  <h3>Rantai bukti (4 langkah)</h3>
+  <ol class="proof">
+    <li><code>run_batch_rka</code> <strong>selalu</strong> mengirim argumen <code>--digest-only</code>.</li>
+    <li>Di <code>v6/scripts/reviu-rka-kl/run_batch.py:243</code>, <code>cross_check</code> hanya berjalan
+        <code>if ok_tor and ok_rab <strong>and not digest_only</strong></code> → <strong>selalu dilewati</strong>.</li>
+    <li>Pemindaian seluruh penugasan riil: <strong>nol</strong> berkas <code>anomalies*.json</code>.</li>
+    <li>Doktrin eksplisit di <code>anggota_tim.md</code>:
+        <em>"Skill PBJ kini MODE FULL-AI — TANPA rule/anomali."</em></li>
+  </ol>
+  <p><strong>Kesimpulan:</strong> komponen tersebut bukan hanya bertentangan doktrin, tetapi juga
+     <strong>kode mati</strong> — masukannya tidak pernah diproduksi pada alur full-AI.</p>
+
+  <div class="callout c-good">
+    <h3>✓ Keputusan &amp; verifikasi</h3>
+    <p style="margin-bottom:0"><code>prefill_temuan.py</code> <strong>tidak disalin</strong> ke repositori ini,
+       dan kedua tool tidak didaftarkan. Diverifikasi otomatis: registry berisi
+       <strong>13 tool, nol tool deterministik</strong>, sementara
+       <code>write_penilaian_aspek</code> (penilaian per-aspek) tetap ada.</p>
+  </div>
+
+  <!-- 3 -->
+  <h2><span class="num">3</span>Keputusan per Berkas</h2>
+
+  <h3><span class="tag t-take">DIAMBIL</span> &nbsp;Perbaikan teknis dari v10.1</h3>
+  <div class="scroll">
+  <table>
+    <tr><th>Berkas</th><th>Nilai tambah</th></tr>
+    <tr><td><strong>liteparse_extract.py</strong></td>
+        <td><strong>OCR fallback</strong> (RapidOCR + PyMuPDF) → PDF hasil <em>scan</em> kini terbaca;
+            plus baca <code>.txt/.md</code> langsung (sebelumnya digest bukti <code>.md</code> kosong <em>senyap</em>).
+            Pelindung <code>_PARSE_LOCK</code> &amp; rute Word/Excel milik saya tetap dipertahankan.</td></tr>
+    <tr><td><strong>render_lhp.py</strong></td>
+        <td>Builder LHR pengadaan format <strong>KKSAR lengkap</strong>
+            (Kondisi→Kriteria→Sebab→Akibat→Rekomendasi + rekomendasi HITL).
+            Versi saya hanya Kondisi + Rekomendasi.</td></tr>
+    <tr><td><strong>storage.py</strong></td>
+        <td>Tahapan berbasis <strong>sentinel flag</strong> + status baru
+            <code>KP_DONE</code> / <code>PKP_KT_DONE</code> / <code>KKP_AT_DONE</code> —
+            membedakan "KT simpan" vs "PT setujui". <em>Ini menjawab backlog 7.13 (hard-gate tahapan).</em></td></tr>
+    <tr><td><strong>qc_saipi.py</strong></td>
+        <td>REN-001/002 menerima KP/PKP <strong>native INTEGRAL</strong> (fallback ke
+            <code>sasaran-assignment.json</code>), tidak lagi gagal keras.</td></tr>
+    <tr><td><strong>agents/base.py</strong></td>
+        <td><strong>Perbaikan bug atas kode saya:</strong> <code>env={}</code> alih-alih <code>None</code> —
+            <code>env=None</code> memicu <em>"'NoneType' object is not a mapping"</em>. Mode limit langganan tetap utuh.</td></tr>
+    <tr><td><strong>page.tsx</strong> · <strong>HeroPenugasan.tsx</strong></td>
+        <td>Tangga status 9 tahap + <strong>kunci tahapan nyata</strong>;
+            <code>LhpFilesPanel</code> dengan prop <code>variant</code> (dipakai 3 tempat vs 1).</td></tr>
+    <tr><td>routes/<strong>penugasan.py</strong>, <strong>agen.py</strong>, <strong>dashboard.py</strong>,
+            <strong>models.py</strong>, <strong>api.ts</strong>, kriteria LKE SAKIP</td>
+        <td>Perbaikan fungsional + penulisan sentinel flag; dashboard memakai
+            <code>compute_penugasan_status</code> (konsisten dengan status turunan).</td></tr>
+  </table>
+  </div>
+
+  <h3><span class="tag t-keep">DIPERTAHANKAN</span> &nbsp;Versi lokal lebih baru</h3>
+  <p>Karena v10.1 bercabang <em>sebelum</em> 5 perbaikan terakhir saya, isinya adalah versi lama:</p>
+  <div class="scroll">
+  <table>
+    <tr><th>Berkas</th><th>Versi v10.1 (lama)</th><th>Versi lokal (dipakai)</th></tr>
+    <tr><td><code>digest_generic.py</code></td><td>potong <code>[:6000]</code> depan saja → dokumen besar terbaca ±10%</td><td>sampling representatif seluruh halaman + <code>peta_halaman</code></td></tr>
+    <tr><td><code>lke_tools.py</code></td><td>batas 150 sel, muat <code>read_only=False</code> (11 dtk)</td><td>mode <strong>fokus</strong> + jendela baris + read-only (0,1 dtk)</td></tr>
+    <tr><td><code>pipeline_tools.py</code> · <code>run_batch.py</code></td><td>RKA hanya PDF</td><td>RKA terima PDF/Word/Excel</td></tr>
+    <tr><td><code>digest_rab.py</code></td><td>gabung <code>" | "</code> (regex SAKTI xlsx gagal)</td><td>gabung TAB (komponen terbaca)</td></tr>
+    <tr><td><code>kkp_tools.py</code></td><td><code>rk[:1800]</code> + 2 tool deterministik</td><td>pemangkasan <em>page-aware</em>, tanpa tool deterministik</td></tr>
+    <tr><td><code>anggota_tim.md</code></td><td>—</td><td><strong>superset</strong>: doktrin v10.1 (SATKER WAJIB) + doktrin dokumen besar + <code>fokus=1</code></td></tr>
+  </table>
+  </div>
+
+  <h3><span class="tag t-new">TAMBAHAN SAYA</span> &nbsp;Kompatibilitas mundur</h3>
+  <div class="callout c-warn">
+    <h3>Masalah yang dicegah</h3>
+    <p>Logika tahapan v10.1 bergantung pada <em>sentinel flag</em>. Penugasan <strong>lama tidak punya flag
+       sama sekali</strong> — tanpa penanganan, penugasan #13 (sudah PKP, belum ada temuan) akan
+       <strong>mundur menjadi DRAFT</strong> di layar.</p>
+    <p style="margin-bottom:0"><strong>Solusi:</strong> saya tambahkan <em>fallback</em> di
+       <code>storage.py</code> yang menurunkan status <code>PKP_DONE</code> dari
+       <code>sasaran-assignment.json</code> bila flag tidak ada. Terverifikasi: status seluruh
+       penugasan <strong>identik dengan sebelum merge</strong>.</p>
+  </div>
+
+  <!-- 4 -->
+  <h2><span class="num">4</span>Hasil Verifikasi</h2>
+
+  <h3>Uji regresi — memastikan pekerjaan sebelumnya tidak hilang</h3>
+  <div class="scroll">
+  <table>
+    <tr><th>#</th><th>Yang diuji</th><th>Hasil</th></tr>
+    <tr><td>1</td><td>Cakupan digest dokumen besar</td><td class="ok"><strong>25/25 halaman</strong> terwakili + peta 25 halaman</td></tr>
+    <tr><td>2</td><td>LKE mode fokus (sheet raksasa)</td><td class="ok"><strong>30 baris</strong> data, blok PK [3, 5]</td></tr>
+    <tr><td>3</td><td>Pelindung <code>fill_lke</code></td><td class="ok">tulis berhasil, sheet agregator <strong>ditolak</strong></td></tr>
+    <tr><td>4</td><td>RKA menerima Word/Excel</td><td class="ok"><code>.pdf .docx .xlsx .xlsm</code></td></tr>
+    <tr><td>5</td><td>Doktrin full-AI</td><td class="ok"><strong>13 tool, nol deterministik</strong></td></tr>
+  </table>
+  </div>
+
+  <h3>Uji sistem hidup</h3>
+  <div class="scroll">
+  <table>
+    <tr><th>Pemeriksaan</th><th>Hasil</th></tr>
+    <tr><td>Impor seluruh modul backend</td><td class="ok">OK — aplikasi dapat <em>boot</em></td></tr>
+    <tr><td>Ekstraksi dokumen (regresi OCR)</td><td class="ok">KAK 25 hal / 58.224 char &amp; Excel 5 sheet — identik pra-merge</td></tr>
+    <tr><td>Status 6 penugasan via API</td><td class="ok"><strong>identik pra-merge</strong> (#15/#14 KKP_IN_PROGRESS, #13 PKP_DONE, #1 LHP_DONE)</td></tr>
+    <tr><td>Typecheck frontend (<code>tsc --noEmit</code>)</td><td class="ok">lolos tanpa error</td></tr>
+    <tr><td>9 halaman utama</td><td class="ok">semua HTTP 200</td></tr>
+    <tr><td>Tampilan tahapan (UI)</td><td class="ok">1 KP ✓ · 2 PKP ✓ · 3–4 berjalan · <strong>5–8 terkunci 🔒</strong></td></tr>
+    <tr><td>Dependensi OCR baru</td><td class="ok"><code>pymupdf 1.28.0</code> + <code>rapidocr-onnxruntime 1.4.4</code> terpasang</td></tr>
+  </table>
+  </div>
+
+  <!-- 5 -->
+  <h2><span class="num">5</span>Status &amp; Langkah Berikutnya</h2>
+  <div class="flow">
+    <div class="fbox" style="background:var(--good-bg);border-color:var(--good-line)">
+      <b>Merge — SELESAI ✅</b><span>5 commit di branch <code>merge/v10.1</code>, sudah di-push</span></div>
+    <div class="arr">→</div>
+    <div class="fbox" style="background:var(--warn-bg);border-color:var(--warn-line)">
+      <b>Review — MENUNGGU 🟡</b><span>Anda tinjau branch / buka Pull Request</span></div>
+    <div class="arr">→</div>
+    <div class="fbox" style="background:var(--plan-bg);border-color:var(--plan-line)">
+      <b>Merge ke main — RENCANA 🔵</b><span>setelah disetujui</span></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Riwayat commit</h3>
+    <table style="margin-top:8px">
+      <tr><th>Commit</th><th>Isi</th></tr>
+      <tr><td><code>009a114</code></td><td>1/N — adopsi bersih base.py, models.py, routes, api.ts</td></tr>
+      <tr><td><code>a4d6835</code></td><td>2/N — OCR fallback + render_lhp KKSAR + dependensi OCR</td></tr>
+      <tr><td><code>b994d6f</code></td><td>3/N — tangga status sentinel-flag + dashboard + qc_saipi</td></tr>
+      <tr><td><code>56949c7</code></td><td>4/N — frontend selaras status baru + LhpFilesPanel</td></tr>
+      <tr><td><code>e4400cb</code></td><td>5/N — kriteria LKE SAKIP + penetapan berkas KEEP-LOKAL</td></tr>
+    </table>
+  </div>
+
+  <div class="callout c-plan">
+    <h3>Catatan untuk Anda</h3>
+    <ul style="margin-bottom:0">
+      <li><strong>Belum di-merge ke <code>main</code></strong> — <code>main</code> tetap seperti semula, aman.</li>
+      <li>Dependensi OCR cukup besar (onnxruntime); sudah terpasang di venv dan terverifikasi ter-import.</li>
+      <li>Tahapan kini <strong>terkunci berjenjang</strong> — perilaku baru ini menjawab backlog 7.13,
+          namun perlu Anda cek apakah sesuai alur kerja auditor sehari-hari.</li>
+      <li>Penugasan demo (#1, #2, #4, #13, #14, #15) <strong>tidak berubah</strong> statusnya.</li>
+    </ul>
+  </div>
+
+  <footer>
+    ∫ INTEGRAL · Integrasi Audit Internal — Inspektorat II, Kementerian Komunikasi dan Digital RI<br>
+    Laporan merge v10.1 → v10 · branch <code>merge/v10.1</code>
+  </footer>
+
+</div>
+</body>
+</html>
