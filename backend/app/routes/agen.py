@@ -661,6 +661,20 @@ async def stream_agent(
     p = (await db.execute(select(Penugasan).where(Penugasan.id == penugasan_id))).scalar_one_or_none()
     assert_akses_penugasan(p, user)  # ISOLASI Inspektorat
 
+    # Skill penugasan harus MASIH terdaftar. Penugasan lama bisa memakai skill yang
+    # sudah dinonaktifkan (daftar-izin FREE menyusut); tanpa penjagaan ini agen jalan
+    # lalu `load_skill` gagal DI TENGAH run — mahal dan membingungkan. Lebih baik
+    # ditolak di depan dengan sebab yang jelas.
+    from app.skills_registry import available_slugs, skill_exists
+
+    if not skill_exists(p.skill):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Skill '{p.skill}' sudah tidak aktif di sistem, sehingga analisis tidak bisa "
+            f"dijalankan untuk penugasan ini. Skill yang aktif: {', '.join(available_slugs())}. "
+            "Hubungi pengembang bila penugasan ini masih perlu dilanjutkan.",
+        )
+
     # Hard gate: Generate Context ([MODE:CONTEXT]) hanya boleh bila KT sudah isi
     # sasaran + AT sudah upload bahan (digest untuk RKA/PBJ, atau kriteria/objek
     # untuk skill criteria-driven).

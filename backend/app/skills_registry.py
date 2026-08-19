@@ -44,8 +44,25 @@ _ALLOWLIST_FREE = {
     "reviu-umum",
     "evaluasi-umum",
     "pemantauan-umum",
-    "konsultansi-umum",
 }
+
+# Skill "umum" = criteria-driven: TIDAK punya kriteria baku bawaan, kriterianya
+# disediakan auditor per penugasan (Daftar Kriteria). Dipakai untuk memutuskan
+# apakah panel/gerbang kriteria berlaku. reviu-rka-kl & reviu-pengadaan TIDAK
+# termasuk — kriteria bakunya melekat (PMK 107/2024; Perpres 16/2018 jo. 12/2021).
+SKILL_UMUM = {
+    "audit-umum",
+    "reviu-umum",
+    "evaluasi-umum",
+    "pemantauan-umum",
+}
+
+
+def is_skill_umum(skill: str | None) -> bool:
+    """True bila skill bersifat criteria-driven (kriteria dari auditor)."""
+    if not skill:
+        return False
+    return _slugify(str(skill)) in SKILL_UMUM
 
 # (kosong sejak 3.3 — meta-skill dipindah ke knowledge/meta/, bukan lagi disembunyikan)
 _HIDDEN_FROM_PICKER: set[str] = set()

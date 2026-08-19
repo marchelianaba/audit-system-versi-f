@@ -239,6 +239,10 @@ export default function DashboardPage() {
                   <>
                     <option value="reviu-rka-kl">Reviu RKA-K/L</option>
                     <option value="reviu-pengadaan">Reviu Pengadaan</option>
+                    <option value="reviu-umum">Reviu Umum</option>
+                    <option value="audit-umum">Audit Umum</option>
+                    <option value="evaluasi-umum">Evaluasi Umum</option>
+                    <option value="pemantauan-umum">Pemantauan Umum</option>
                   </>
                 ) : (
                   skills.map((s) => (

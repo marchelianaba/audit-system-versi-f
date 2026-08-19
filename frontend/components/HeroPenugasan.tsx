@@ -15,40 +15,18 @@ const SKILL_LABEL: Record<string, string> = {
   'reviu-rka-kl': 'Reviu RKA-K/L',
   'reviu-pengadaan': 'Reviu Pengadaan',
   'reviu-umum': 'Reviu Umum',
-  'audit-pengadaan': 'Audit Pengadaan',
-  'audit-kinerja': 'Audit Kinerja',
   'audit-umum': 'Audit Umum',
-  'evaluasi-sakip': 'Evaluasi SAKIP',
-  'evaluasi-spip': 'Evaluasi SPIP',
-  'evaluasi-reformasi-birokrasi': 'Evaluasi Reformasi Birokrasi',
-  'evaluasi-manajemen-risiko': 'Evaluasi Manajemen Risiko',
   'evaluasi-umum': 'Evaluasi Umum',
-  'kepatuhan-saipi': 'Kepatuhan SAIPI (QA)',
-  'konsultansi-umum': 'Konsultansi Umum',
-  'konsultasi-pengadaan': 'Pendampingan Pengadaan',
-  'pemantauan-pengadaan': 'Pemantauan Pengadaan',
-  'pemantauan-tindak-lanjut': 'Pemantauan Tindak Lanjut',
   'pemantauan-umum': 'Pemantauan Umum',
 };
 
-const SKILL_GROUP: Record<string, 'audit' | 'reviu' | 'evaluasi' | 'pemantauan' | 'konsultasi'> = {
-  'audit-pengadaan': 'audit',
-  'audit-kinerja': 'audit',
+const SKILL_GROUP: Record<string, 'audit' | 'reviu' | 'evaluasi' | 'pemantauan'> = {
   'audit-umum': 'audit',
   'reviu-rka-kl': 'reviu',
   'reviu-pengadaan': 'reviu',
   'reviu-umum': 'reviu',
-  'evaluasi-sakip': 'evaluasi',
-  'evaluasi-spip': 'evaluasi',
-  'evaluasi-reformasi-birokrasi': 'evaluasi',
-  'evaluasi-manajemen-risiko': 'evaluasi',
   'evaluasi-umum': 'evaluasi',
-  'kepatuhan-saipi': 'evaluasi',
-  'pemantauan-pengadaan': 'pemantauan',
-  'pemantauan-tindak-lanjut': 'pemantauan',
   'pemantauan-umum': 'pemantauan',
-  'konsultansi-umum': 'konsultasi',
-  'konsultasi-pengadaan': 'konsultasi',
 };
 
 // Map status penugasan v7 → status tahapan workflow INTEGRAL.

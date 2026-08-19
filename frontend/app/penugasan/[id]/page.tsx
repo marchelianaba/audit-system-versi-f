@@ -748,14 +748,17 @@ function KpTab({ penugasan, role }: { penugasan: Penugasan; role: Role }) {
 
 // Pilihan jenis dokumen per kelompok skill (untuk dropdown upload). Default
 // "(auto)" = backend klasifikasi dari nama file.
-const PBJ_SKILLS = ['reviu-pengadaan', 'audit-pengadaan', 'pemantauan-pengadaan', 'konsultasi-pengadaan'];
+// Skill aktif FREE = 6 (lihat backend/app/skills_registry.py _ALLOWLIST_FREE).
+// Daftar di bawah hanya boleh memuat skill yang MASIH aktif — skill mati yang
+// tersisa di sini dulu membuat dua sumber kebenaran yang diam-diam melenceng.
+const PBJ_SKILLS = ['reviu-pengadaan'];
 // Audit-* punya tahapan 0 Survey Pendahuluan → boleh unggah dokumen jenis SURVEY.
-const AUDIT_SKILLS = ['audit-pengadaan', 'audit-kinerja', 'audit-umum'];
+const AUDIT_SKILLS = ['audit-umum'];
 function jenisOptionsFor(skill: string): string[] {
   let base: string[];
   if (skill === 'reviu-rka-kl') base = ['TOR', 'RAB', 'KP', 'PKP', 'ST', 'OTHER'];
   else if (PBJ_SKILLS.includes(skill)) base = ['KAK', 'HPS', 'RFI', 'KONTRAK', 'KP', 'PKP', 'ST', 'OTHER'];
-  // criteria-driven (audit-kinerja, evaluasi-*, *-umum, kepatuhan-saipi, dll)
+  // criteria-driven (4 skill *-umum): kriteria datang dari auditor, bukan bawaan skill
   else base = ['KRITERIA', 'OBJEK', 'KP', 'PKP', 'ST', 'OTHER'];
   // Bukti lapangan AT (pemeriksaan fisik/observasi/diskusi ahli) — SEMUA skill,
   // opsional; bila diupload otomatis di-digest & WAJIB dianalisis agen.
