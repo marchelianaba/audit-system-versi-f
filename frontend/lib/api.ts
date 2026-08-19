@@ -128,6 +128,19 @@ export interface Dokumen {
 }
 
 // ===== API =====
+/** Satu kriteria pengawasan. `UNGGAHAN` = berkas + rujukan pasal yang dipakai;
+ *  `KETIK` = kriteria yang diketik auditor (untuk ketentuan tanpa berkas digital). */
+export type KriteriaEntri = {
+  id?: string;
+  tipe: 'UNGGAHAN' | 'KETIK';
+  file?: string;
+  nama_file?: string;
+  pindai?: boolean;
+  rujukan?: Array<{ pasal: string; halaman: string }>;
+  sumber?: string;
+  teks?: string;
+};
+
 export const api = {
   /** Login (Workstream B): username + password. Jalur legacy {role,email} masih
    * didukung backend di dev (untuk transisi), tapi UI utama pakai username+password. */
@@ -409,6 +422,32 @@ export const api = {
     request<{ ok: boolean; total_sasaran: number; path: string }>(
       `/penugasan/${penugasanId}/sasaran-assignment`,
       { method: 'PUT', body: JSON.stringify({ sasaran, ...(meta || {}) }) }
+    ),
+
+  /** Daftar Kriteria — khusus skill *-umum (criteria-driven).
+   *  Skill umum tak punya kriteria baku bawaan; kriterianya datang dari auditor,
+   *  lewat berkas yang diunggah (dengan rujukan pasal) atau diketik langsung. */
+  getDaftarKriteria: (penugasanId: number) =>
+    request<{
+      berlaku: boolean;
+      ada_kriteria: boolean;
+      jumlah: number;
+      entri: KriteriaEntri[];
+      berkas_tersedia: Array<{
+        dokumen_id: number;
+        nama_file: string;
+        status: string;
+        terbaca: boolean | null;
+        pindai: boolean;
+        catatan_baca: string;
+        halaman_total: number;
+      }>;
+    }>(`/penugasan/${penugasanId}/daftar-kriteria`),
+
+  saveDaftarKriteria: (penugasanId: number, entri: KriteriaEntri[]) =>
+    request<{ ok: boolean; jumlah: number; ada_kriteria: boolean; entri: KriteriaEntri[] }>(
+      `/penugasan/${penugasanId}/daftar-kriteria`,
+      { method: 'PUT', body: JSON.stringify({ entri }) }
     ),
 
   /** Cara penyusunan KKSA per sasaran — DIPILIH ANGGOTA TIM di Tahapan 3

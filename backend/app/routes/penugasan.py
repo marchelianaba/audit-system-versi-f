@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,7 @@ from app.tenancy import assert_akses_penugasan, filter_penugasan, inspektorat_us
 from app.schemas import PenugasanCreate, PenugasanOut
 from app.storage import (
     INPUT_JENIS,
+    append_audit_trail,
     compute_penugasan_status,
     context_readiness,
     delete_penugasan_folder,
@@ -942,6 +943,203 @@ async def get_sasaran_templates(
 
 
     return result
+
+
+# ===========================================================================
+# DAFTAR KRITERIA — khusus skill *-umum (criteria-driven)
+#
+# Skill umum tidak punya kriteria baku bawaan seperti reviu-rka-kl (PMK
+# 107/2024) atau reviu-pengadaan (Perpres 16/2018); kriterianya datang dari
+# auditor. Dua bentuk setara: berkas yang diunggah (dengan rujukan pasal), atau
+# kriteria yang diketik langsung. Lihat app/daftar_kriteria.py.
+# ===========================================================================
+
+
+class RujukanKriteria(BaseModel):
+    pasal: str = ""
+    halaman: str = ""
+
+
+class EntriKriteria(BaseModel):
+    id: str | None = None
+    tipe: str  # UNGGAHAN | KETIK
+    file: str | None = None
+    nama_file: str | None = None
+    pindai: bool = False
+    rujukan: list[RujukanKriteria] = Field(default_factory=list)
+    sumber: str | None = None
+    teks: str | None = None
+
+
+class DaftarKriteriaPayload(BaseModel):
+    entri: list[EntriKriteria] = Field(default_factory=list)
+
+
+@router.get("/{penugasan_id}/daftar-kriteria")
+async def get_daftar_kriteria(
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Daftar kriteria + berkas kriteria yang tersedia. Semua role boleh baca."""
+    from app import daftar_kriteria as dk
+    from app.digest_generic import status_baca_berkas
+    from app.skills_registry import is_skill_umum
+
+    p = await _get_penugasan_or_404(db, penugasan_id, current)
+    folder = Path(p.folder_path)
+    status_map = status_baca_berkas(folder)
+
+    rows = (
+        await db.execute(
+            select(Dokumen).where(
+                Dokumen.penugasan_id == p.id,
+                Dokumen.jenis == "KRITERIA",
+            )
+        )
+    ).scalars().all()
+    berkas = []
+    for d in rows:
+        st = status_map.get((d.nama_file or "").strip().lower(), {})
+        berkas.append({
+            "dokumen_id": d.id,
+            "nama_file": d.nama_file,
+            "status": d.status.value if hasattr(d.status, "value") else str(d.status),
+            "terbaca": st.get("terbaca"),
+            "pindai": bool(st.get("pindai")),
+            "rusak": bool(st.get("rusak")),
+            "catatan_baca": st.get("catatan_baca") or d.error_message or "",
+            "halaman_total": st.get("halaman_total") or 0,
+        })
+
+    return {
+        "berlaku": is_skill_umum(p.skill),
+        "ada_kriteria": dk.ada_kriteria(folder),
+        "jumlah": dk.jumlah(folder),
+        "entri": dk.ringkas(folder),
+        "berkas_tersedia": berkas,
+    }
+
+
+@router.put("/{penugasan_id}/daftar-kriteria")
+async def put_daftar_kriteria(
+    penugasan_id: int,
+    payload: DaftarKriteriaPayload,
+    background_tasks: BackgroundTasks,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Simpan daftar kriteria. AT sebagai pelaksana; KT/PT boleh sebagai supervisi.
+
+    Validasi sengaja KERAS pada dua hal, karena keduanya menentukan apakah agen
+    bisa membaca kriteria sama sekali:
+      - `pasal` WAJIB pada tiap rujukan — tanpa itu agen harus menyapu seluruh
+        berkas (boros & sering meleset), yang justru ingin dihindari.
+      - `halaman` WAJIB bila berkasnya hasil pindai — tulisan di gambar tak bisa
+        dicari sebelum halamannya di-OCR, dan yang di-OCR ditentukan oleh
+        halaman yang ditunjuk. Tanpa nomor halaman, berkas itu mustahil dibaca.
+    """
+    from app import daftar_kriteria as dk
+    from app.digest_generic import status_baca_berkas
+
+    user, role = current
+    if role not in (Role.AT, Role.KT, Role.PT):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Daftar kriteria diisi Anggota Tim (AT); KT/PT boleh menyunting sebagai "
+            f"supervisi. Role Anda: {role.value}.",
+        )
+    p = await _get_penugasan_or_404(db, penugasan_id, current)
+    folder = Path(p.folder_path)
+    status_map = status_baca_berkas(folder)
+
+    entri_bersih: list[dict[str, Any]] = []
+    nomor = 0
+    for e in payload.entri:
+        tipe = (e.tipe or "").strip().upper()
+        nomor += 1
+        eid = (e.id or "").strip() or f"K-{nomor:03d}"
+        if tipe == dk.TIPE_KETIK:
+            teks = (e.teks or "").strip()
+            if not teks:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Kriteria {eid}: teks kriteria masih kosong.",
+                )
+            entri_bersih.append({
+                "id": eid, "tipe": dk.TIPE_KETIK,
+                "sumber": (e.sumber or "").strip(), "teks": teks,
+            })
+            continue
+
+        if tipe != dk.TIPE_UNGGAHAN:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Kriteria {eid}: tipe '{e.tipe}' tidak dikenal (UNGGAHAN atau KETIK).",
+            )
+        berkas = (e.file or e.nama_file or "").strip()
+        if not berkas:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Kriteria {eid}: berkas kriteria belum dipilih.",
+            )
+        nama = Path(berkas.replace("\\", "/")).name
+        st = status_map.get(nama.strip().lower(), {})
+        if st.get("rusak"):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"{nama} tidak bisa dibaca sistem (berkas rusak atau format tak didukung). "
+                "Menyebut nomor halaman tidak menolong — unggah ulang versi yang bisa dibuka.",
+            )
+        pindai = bool(st.get("pindai", e.pindai))
+        rujukan = [r for r in e.rujukan if (r.pasal or "").strip() or (r.halaman or "").strip()]
+        if not rujukan:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"{nama}: sebutkan minimal satu pasal/bagian yang dipakai — agen hanya "
+                "membaca bagian itu, bukan seluruh berkas.",
+            )
+        bersih_rujukan = []
+        for r in rujukan:
+            pasal = (r.pasal or "").strip()
+            halaman = (r.halaman or "").strip()
+            if not pasal:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"{nama}: nomor pasal/bagian wajib diisi pada setiap rujukan.",
+                )
+            if pindai and not dk.parse_halaman(halaman):
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"{nama} adalah berkas hasil pindai — sebutkan nomor halaman untuk "
+                    f"'{pasal}' agar bisa dibaca sistem.",
+                )
+            bersih_rujukan.append({"pasal": pasal, "halaman": halaman})
+        entri_bersih.append({
+            "id": eid, "tipe": dk.TIPE_UNGGAHAN, "file": berkas,
+            "nama_file": nama, "pindai": pindai, "rujukan": bersih_rujukan,
+        })
+
+    dk.write(folder, {"versi": 1, "entri": entri_bersih})
+    append_audit_trail(folder, {
+        "event": "daftar_kriteria_disimpan",
+        "oleh": user.nama_lengkap,
+        "role": role.value,
+        "jumlah": len(entri_bersih),
+    })
+
+    # Halaman yang baru ditunjuk perlu di-OCR supaya benar-benar terbaca. Tanpa
+    # ini, menunjuk halaman tak berefek apa pun sampai ada unggahan berikutnya.
+    from app.routes.dokumen import _ingest_background
+
+    background_tasks.add_task(_ingest_background, p.id)
+
+    return {
+        "ok": True,
+        "jumlah": len(entri_bersih),
+        "ada_kriteria": dk.ada_kriteria(folder),
+        "entri": dk.ringkas(folder),
+    }
 
 
 @router.get("/{penugasan_id}/context-readiness")

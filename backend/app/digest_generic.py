@@ -554,3 +554,41 @@ def skill_needs_generic_digest(skill: str | None) -> bool:
     if not skill:
         return False
     return str(skill).strip().lower() not in _SKILL_WITH_NATIVE_DIGEST
+
+
+def status_baca_berkas(penugasan_folder: str | Path) -> dict:
+    """Peta nama-berkas (lowercase) → status keterbacaan, dari digest yang ada.
+
+    Dipakai panel Daftar Kriteria untuk tahu berkas mana yang HASIL PINDAI —
+    karena pada berkas pindai auditor wajib menyebutkan nomor halaman (tulisan
+    di gambar tak bisa dicari sebelum halamannya di-OCR lebih dulu).
+    """
+    folder = Path(penugasan_folder)
+    out: dict = {}
+    ing = folder / "_INGESTED"
+    if not ing.is_dir():
+        return out
+    for f in sorted(ing.glob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        src = d.get("file")
+        if not src:
+            continue
+        via = str(d.get("dibaca_via") or "")
+        out[Path(str(src).replace("\\", "/")).name.strip().lower()] = {
+            "terbaca": bool(d.get("terbaca")),
+            "dibaca_via": via,
+            "catatan_baca": d.get("catatan_baca") or "",
+            # Bedakan HASIL PINDAI dari RUSAK. Keduanya sama-sama "tak ada teks",
+            # tapi penanganannya berbeda: berkas pindai bisa ditolong dengan
+            # menyebut nomor halaman (lalu di-OCR), sedangkan berkas rusak/format
+            # tak didukung tak tertolong oleh nomor halaman apa pun — memintanya
+            # justru menyesatkan auditor. Pembedanya: berkas pindai tetap punya
+            # halaman yang bisa dibuka, berkas rusak tidak.
+            "pindai": via in ("ocr", "kosong", "ocr-kosong") and (d.get("halaman_total") or 0) >= 1,
+            "rusak": (not d.get("terbaca")) and (d.get("halaman_total") or 0) < 1,
+            "halaman_total": d.get("halaman_total") or 0,
+        }
+    return out

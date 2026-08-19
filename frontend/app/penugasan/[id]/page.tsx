@@ -8,6 +8,7 @@ import { confirmDialog } from '@/lib/confirm';
 import { api, getSession, Dokumen, Penugasan, Role, Session } from '@/lib/api';
 import { AppShell } from '@/components/AppShell';
 import { HeroPenugasan } from '@/components/HeroPenugasan';
+import { DaftarKriteriaPanel } from '@/components/DaftarKriteriaPanel';
 import { LembarReviuPanel } from '@/components/LembarReviuPanel';
 import { AdminTUPanel } from '@/components/AdminTUPanel';
 
@@ -42,6 +43,13 @@ export default function DetailPenugasanPage() {
   // Cara penyusunan KKSA per sasaran, dipilih AT di Tahapan 3 (bukan KT di PKP).
   // Dipakai untuk menyiapkan layar: prompt awal chat + membuka formulir manual.
   const [modesKk, setModesKk] = useState<Record<string, 'AI' | 'CATATAN' | 'MANUAL'>>({});
+  // Status Daftar Kriteria (skill *-umum). Dipakai mengunci tombol AI: analisis
+  // tanpa tolok ukur tak bisa dipertanggungjawabkan. Mode manual tak terpengaruh.
+  const [kriteria, setKriteria] = useState<{ berlaku: boolean; adaKriteria: boolean; jumlah: number }>({
+    berlaku: false,
+    adaKriteria: false,
+    jumlah: 0,
+  });
   // Status reviu konsep LHP terbaru (S3.2) — dipakai HeroPenugasan untuk tahapan 6.
   const [lhpStatus, setLhpStatus] = useState<'APPROVED' | 'NEEDS_REVISION' | null>(null);
   const [lhpStatusError, setLhpStatusError] = useState(false);
@@ -169,6 +177,9 @@ export default function DetailPenugasanPage() {
   const sasaranManual = Object.entries(modesKk)
     .filter(([, m]) => m === 'MANUAL')
     .map(([sid]) => sid);
+  // Panel kriteria tak relevan bila SELURUH sasaran disusun manual — di sana
+  // auditor menulis unsur Kriteria langsung di formulir KKSA.
+  const semuaManual = daftarCara.length > 0 && daftarCara.every((x) => x === 'MANUAL');
   const larangan = sasaranManual.length
     ? ` JANGAN menulis temuan untuk sasaran ${sasaranManual.join(', ')} — sasaran itu saya susun sendiri secara manual.`
     : '';
@@ -285,6 +296,17 @@ export default function DetailPenugasanPage() {
               role={session.role_aktif}
               skill={penugasan.skill}
             />
+            {/* Daftar Kriteria — hanya skill *-umum (criteria-driven), dan hanya
+                bila ada sasaran yang memakai AI. Disembunyikan saat seluruh
+                sasaran manual: di sana kriteria diketik di formulir KKSA. */}
+            {!semuaManual && (
+              <DaftarKriteriaPanel
+                key={`kriteria-${id}`}
+                penugasanId={id}
+                role={session.role_aktif}
+                onStatus={setKriteria}
+              />
+            )}
             {/* Pemilih cara penyusunan — pindah ke sini dari form PKP milik KT.
                 Hasil pilihan menyiapkan layar di bawahnya (prompt chat & formulir
                 manual), tanpa menutup jalur lain. */}
