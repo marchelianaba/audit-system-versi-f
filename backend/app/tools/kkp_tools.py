@@ -239,6 +239,37 @@ def _normalize_temuan_input(raw: dict) -> dict:
     out.setdefault("langkah_kerja_terkait", "")
     out.setdefault("pattern_id", "")
 
+    # ASAL KRITERIA — dari mana bunyi pasal pada unsur Kriteria berasal:
+    #   UNGGAHAN       : berkas kriteria yang diunggah auditor (+ bagian/pasal)
+    #   KETIK_AUDITOR  : kriteria yang diketik auditor (tanpa berkas digital)
+    #   REFERENSI_SKILL: referensi bawaan skill (regulasi-kunci, pattern, dll)
+    # Tanpa penanda ini, kutipan dari berkas auditor dan kutipan dari referensi
+    # bawaan tampak persis sama di kertas kerja — Ketua Tim tak bisa membedakan
+    # mana yang bersandar pada berkas nyata di penugasan ini. Bentuk:
+    #   [{"tipe": "...", "berkas": "...", "bagian": "Pasal 26 ayat (5)"}]
+    sk = out.get("sumber_kriteria")
+    if isinstance(sk, dict):
+        sk = [sk]
+    elif isinstance(sk, str):
+        sk = [{"tipe": "KETIK_AUDITOR", "berkas": "", "bagian": sk}] if sk.strip() else []
+    elif not isinstance(sk, list):
+        sk = []
+    bersih = []
+    for item in sk:
+        if isinstance(item, str):
+            item = {"tipe": "KETIK_AUDITOR", "berkas": "", "bagian": item}
+        if not isinstance(item, dict):
+            continue
+        tipe = str(item.get("tipe") or "").strip().upper()
+        if tipe not in ("UNGGAHAN", "KETIK_AUDITOR", "REFERENSI_SKILL"):
+            tipe = "REFERENSI_SKILL"
+        bersih.append({
+            "tipe": tipe,
+            "berkas": str(item.get("berkas") or "")[:200],
+            "bagian": str(item.get("bagian") or "")[:200],
+        })
+    out["sumber_kriteria"] = bersih
+
     # Identitas RO (RKA-K/L multi-RO): label STABIL RO tempat temuan ini berasal
     # (dari `ro_label` di index read_digest — bukan nomor posisional). Kosong untuk
     # penugasan non-RKA / RO tunggal. Dipakai untuk analisis inkremental: RO yang
@@ -272,7 +303,12 @@ def _normalize_temuan_input(raw: dict) -> dict:
     "(judul_temuan, anggota_tim.nama_lengkap). Field wajib: sasaran_id, anggota_tim/"
     "assigned_to, judul, kondisi, kriteria, akibat, dokumen_sumber[{file, halaman, kutipan}]. "
     "Ketertelusuran (isi bila ada): langkah_kerja_terkait (langkah PKP yang memunculkan "
-    "temuan), pattern_id (id pattern wiki). KODEFIKASI (WAJIB — lihat get_kodefikasi_temuan): "
+    "temuan), pattern_id (id pattern wiki). "
+    "sumber_kriteria (WAJIB untuk skill *-umum): dari mana bunyi pasal pada unsur "
+    "Kriteria berasal — [{tipe: UNGGAHAN|KETIK_AUDITOR|REFERENSI_SKILL, berkas, bagian}]. "
+    "Kriteria dari Daftar Kriteria penugasan = UNGGAHAN/KETIK_AUDITOR; dari references/ "
+    "skill = REFERENSI_SKILL. Jangan disamarkan: auditor berhak tahu mana yang bersandar "
+    "pada berkas nyata di penugasan ini. KODEFIKASI (WAJIB — lihat get_kodefikasi_temuan): "
     "kode_kondisi (wajib), kode_rekomendasi (wajib), kode_penyebab (semua jenis — isi bila penyebab "
     "terbukti; kosongkan bila sebab='tidak ditemukan/tidak cukup data', JANGAN mengarang); "
     "format `<sub>.<param>` mis. 1.104.",
@@ -420,6 +456,43 @@ def _read_hitl_overlay(folder: Path):
     return rejected, edits
 
 
+_LABEL_SUMBER = {
+    "UNGGAHAN": "berkas kriteria penugasan",
+    "KETIK_AUDITOR": "kriteria diketik auditor",
+    "REFERENSI_SKILL": "referensi bawaan skill",
+}
+
+
+def _sisipkan_label_sumber(t_item: dict) -> dict:
+    """Tempelkan asal kriteria ke teks unsur Kriteria, sesaat sebelum render.
+
+    Renderer V6 (`backend/v6/render_kkp.py`) berstatus TIDAK BOLEH DIEDIT, dan ia
+    hanya mencetak field yang sudah dikenalnya. Supaya penanda asal tetap sampai
+    ke kertas kerja tanpa menyentuh V6, label ditempelkan ke teks `kriteria` di
+    salinan sementara yang dipakai render — file aslinya dikembalikan lewat
+    mekanisme backup/restore yang sudah ada.
+
+    Idempoten: bila label sudah ada, tidak ditempel dua kali.
+    """
+    sumber = t_item.get("sumber_kriteria")
+    if not isinstance(sumber, list) or not sumber:
+        return t_item
+    kriteria = str(t_item.get("kriteria") or "")
+    if "[Sumber kriteria:" in kriteria:
+        return t_item
+    bagian = []
+    for x in sumber:
+        if not isinstance(x, dict):
+            continue
+        label = _LABEL_SUMBER.get(str(x.get("tipe") or "").upper(), "referensi bawaan skill")
+        rinci = " ".join(v for v in (x.get("berkas"), x.get("bagian")) if v).strip()
+        bagian.append(f"{label}{' — ' + rinci if rinci else ''}")
+    if not bagian:
+        return t_item
+    t_item["kriteria"] = f"{kriteria}\n[Sumber kriteria: {'; '.join(bagian)}]".strip()
+    return t_item
+
+
 async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | None]:
     """Terapkan overlay edit manual (HITL) ke `_KKP/temuan.json` sebelum render.
     Return (backup_path, stats).
@@ -503,10 +576,11 @@ async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | No
             continue
         edits = edits_by_id.get(tid)
         if edits:
-            filtered.append({**t_item, **edits})
+            item = {**t_item, **edits}
             n_edits_applied += 1
         else:
-            filtered.append(t_item)
+            item = dict(t_item)
+        filtered.append(_sisipkan_label_sumber(item))
     stats = {
         "n_total": len(full),
         "n_included": len(filtered),
@@ -1259,10 +1333,101 @@ async def write_penilaian_aspek(args: dict) -> dict:
             f"OK|penilaian-aspek ditulis|n_aspek={len(rows)}|tidak_sesuai={n_ts}|tidak_cukup_data={n_tcd}"}]}
 
 
+@tool(
+    "read_daftar_kriteria",
+    "Baca Daftar Kriteria penugasan (khusus skill *-umum). Berisi kriteria yang "
+    "DITETAPKAN AUDITOR: berkas yang diunggah beserta PASAL/BAGIAN yang dipakai, "
+    "dan/atau kriteria yang diketik langsung. WAJIB dipanggil di awal untuk skill "
+    "*-umum — skill itu tidak punya kriteria baku bawaan. Baca HANYA bagian yang "
+    "ditunjuk (pakai `read_kutipan_kriteria`), JANGAN menyapu seluruh berkas.",
+    {"penugasan_folder": str},
+)
+async def read_daftar_kriteria(args: dict) -> dict:
+    from app import daftar_kriteria as dk
+
+    folder = Path(args["penugasan_folder"])
+    entri = dk.ringkas(folder)
+    if not entri:
+        return {"content": [{"type": "text", "text": (
+            "KRITERIA_KOSONG|Daftar Kriteria belum diisi auditor. Untuk skill *-umum, "
+            "JANGAN menyusun temuan dari kriteria karanganmu sendiri — hentikan dan "
+            "laporkan bahwa auditor perlu mengisi Daftar Kriteria lebih dulu."
+        )}]}
+    return {"content": [{"type": "text", "text": json.dumps(
+        {"jumlah": len(entri), "entri": entri}, ensure_ascii=False)}]}
+
+
+@tool(
+    "read_kutipan_kriteria",
+    "Ambil bunyi satu PASAL/BAGIAN dari berkas kriteria — dipotong tepat pada batas "
+    "pasal berikutnya, bukan satu halaman penuh dan bukan seluruh berkas. Pakai "
+    "`nama_berkas` + `pasal` persis seperti tertulis di Daftar Kriteria. Untuk berkas "
+    "hasil pindai, teks diambil dari halaman yang ditunjuk auditor.",
+    {"penugasan_folder": str, "nama_berkas": str, "pasal": str},
+)
+async def read_kutipan_kriteria(args: dict) -> dict:
+    from app import daftar_kriteria as dk
+    from app.liteparse_extract import extract_pages, read_cached_ocr_page
+
+    folder = Path(args["penugasan_folder"])
+    nama = str(args.get("nama_berkas") or "").strip()
+    pasal = str(args.get("pasal") or "").strip()
+    if not nama or not pasal:
+        return {"content": [{"type": "text", "text":
+                "FAILED|`nama_berkas` dan `pasal` wajib diisi."}], "is_error": True}
+
+    berkas = None
+    for f in folder.rglob("*"):
+        if f.is_file() and f.name.strip().lower() == Path(nama).name.strip().lower():
+            berkas = f
+            break
+    if berkas is None:
+        return {"content": [{"type": "text", "text":
+                f"FAILED|berkas '{nama}' tidak ditemukan di folder penugasan."}], "is_error": True}
+
+    halaman_ditunjuk = dk.halaman_untuk(folder, berkas)
+    pages = extract_pages(berkas)
+    # Berkas hasil pindai: teks polos kosong → pakai OCR yang sudah tersimpan
+    # untuk halaman yang DITUNJUK auditor. Tidak memicu OCR baru di sini.
+    if not any((x or "").strip() for x in pages) and halaman_ditunjuk:
+        pages = []
+        for n in halaman_ditunjuk:
+            pages.append(read_cached_ocr_page(berkas, n) or "")
+    teks = "\n".join(x for x in pages if x)
+    if not teks.strip():
+        return {"content": [{"type": "text", "text": (
+            f"TIDAK_TERBACA|{berkas.name} tidak memuat teks yang bisa dibaca. "
+            "Minta auditor menunjuk halamannya di Daftar Kriteria (berkas hasil "
+            "pindai) atau mengunggah versi teks."
+        )}]}
+
+    # Potong dari penanda pasal sampai penanda pasal BERIKUTNYA. Untuk regulasi,
+    # satu pasal lazimnya hanya beberapa paragraf — jauh lebih hemat & tepat
+    # daripada mengirim satu halaman penuh ke konteks agen.
+    kunci = re.escape(pasal.split("ayat")[0].strip())
+    m = re.search(rf"(?im)^\s*{kunci}\b.*$", teks)
+    if not m:
+        m2 = re.search(rf"(?i){kunci}", teks)
+        if not m2:
+            return {"content": [{"type": "text", "text": (
+                f"TIDAK_DITEMUKAN|'{pasal}' tidak ditemukan di {berkas.name}. "
+                "Periksa rujukannya bersama auditor — JANGAN mengarang bunyi pasal."
+            )}]}
+        mulai = m2.start()
+    else:
+        mulai = m.start()
+    sisa = teks[mulai:]
+    lanjut = re.search(r"(?im)^\s*(pasal|bab|angka|huruf)\s+\S+", sisa[len(pasal):])
+    potong = sisa[: len(pasal) + lanjut.start()] if lanjut else sisa[:3000]
+    return {"content": [{"type": "text", "text":
+            f"[{berkas.name} · {pasal}]\n{potong.strip()[:3000]}"}]}
+
+
 KKP_TOOLS = [
     read_context, list_ingested, read_ingested_digest, get_team_members,
     write_context_md, build_context_md_template,
     append_temuan, reset_temuan, get_kodefikasi_temuan, write_penilaian_aspek,
     render_kkp_docx, run_qc_kkp,
     read_temuan_json,
+    read_daftar_kriteria, read_kutipan_kriteria,
 ]

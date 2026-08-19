@@ -515,6 +515,9 @@ export const api = {
         ro: string;
         /** Asal-usul temuan — penentu label draf-AI. */
         origin: 'AI' | 'AI_DARI_CATATAN' | 'MANUAL';
+        /** Asal bunyi pasal pada unsur Kriteria — supaya kutipan dari berkas
+         *  penugasan bisa dibedakan dari kutipan referensi bawaan skill. */
+        sumber_kriteria?: Array<{ tipe: string; berkas: string; bagian: string }>;
         kondisi: string;
         kriteria: string;
         sebab: string;

@@ -1530,6 +1530,10 @@ async def list_temuan_review(
             "origin": str(t.get("origin") or "AI").strip() or "AI",
             "kondisi": kondisi[:400],
             "kriteria": kriteria[:400],
+            # Asal kriteria — supaya Ketua Tim bisa membedakan kutipan yang
+            # bersandar pada berkas nyata di penugasan ini dari kutipan yang
+            # datang dari referensi bawaan skill. Tanpa ini keduanya tampak sama.
+            "sumber_kriteria": t.get("sumber_kriteria") if isinstance(t.get("sumber_kriteria"), list) else [],
             "sebab": sebab[:400],
             "akibat": akibat[:400],
             "anggota": ((t.get("anggota_tim") or {}).get("nama_lengkap") or "") if isinstance(t.get("anggota_tim"), dict) else "",

@@ -9,6 +9,7 @@ import { api, getSession, Dokumen, Penugasan, Role, Session } from '@/lib/api';
 import { AppShell } from '@/components/AppShell';
 import { HeroPenugasan } from '@/components/HeroPenugasan';
 import { DaftarKriteriaPanel } from '@/components/DaftarKriteriaPanel';
+import { PedomanSkillPanel } from '@/components/PedomanSkillPanel';
 import { LembarReviuPanel } from '@/components/LembarReviuPanel';
 import { AdminTUPanel } from '@/components/AdminTUPanel';
 
@@ -344,7 +345,7 @@ export default function DetailPenugasanPage() {
               title="📝 Tahapan 4 — LRS Kertas Kerja (auto dari approval HITL)"
               steps={['Temuan di-approve AT/KT di tahapan 3', 'Status review = LRS KK', 'KT setujui semua sasaran → status KKP_DONE → Tahapan 5 terbuka']}
             />
-            <TemuanReviewPanel penugasanId={id} key={`lrs-${id}`} />
+            <TemuanReviewPanel penugasanId={id} skillPenugasan={penugasan.skill} key={`lrs-${id}`} />
             {session?.role_aktif === 'KT' && (
               <SasaranApprovalPanel
                 penugasanId={id}
@@ -1468,6 +1469,7 @@ function ChatTab({
         <TemuanReviewPanel
           penugasanId={penugasanId}
           openManual={openManual}
+          skillPenugasan={skill}
           key={`temuan-review-${history.length}-${running ? 'run' : 'idle'}`}
         />
       </div>
@@ -3561,11 +3563,16 @@ function LkeRekapTable({ lke }: { lke: any }) {
 function FormulirKksaManual({
   penugasanId,
   sasaranIds,
+  skill,
   onSelesai,
   onBatal,
 }: {
   penugasanId: number;
   sasaranIds: string[];
+  /** Dipakai menampilkan intisari pedoman skill di samping formulir. Mode
+   *  manual tak memanggil agen, jadi tanpa ini doktrin skill tak hadir sama
+   *  sekali di layar dan auditor menulis di ruang kosong. */
+  skill?: string;
   onSelesai: (id: string) => void;
   onBatal: () => void;
 }) {
@@ -3626,6 +3633,7 @@ function FormulirKksaManual({
   const inpNoW = 'px-2 py-1 border border-gray-300 rounded text-[11px]';
   return (
     <div className="mb-3 border border-slate-300 rounded bg-slate-50/60 p-3">
+      {skill && <PedomanSkillPanel skill={skill} />}
       <div className="flex justify-between items-center mb-2">
         <h4 className="text-xs font-semibold text-slate-700">✍ Tulis KKSA manual</h4>
         <span className="text-[10px] text-slate-500">tanpa AI — temuan ditandai “manual”</span>
@@ -3741,10 +3749,13 @@ function FormulirKksaManual({
 function TemuanReviewPanel({
   penugasanId,
   openManual,
+  skillPenugasan,
 }: {
   penugasanId: number;
   /** Buka formulir KKSA manual sejak awal (AT memilih cara MANUAL di Tahapan 3). */
   openManual?: boolean;
+  /** Skill penugasan — diteruskan ke formulir manual untuk panel pedoman. */
+  skillPenugasan?: string;
 }) {
   const session = getSession();
   const role = session?.role_aktif || '';
@@ -3998,6 +4009,7 @@ function TemuanReviewPanel({
       {tulisManual && canSubmit && (
         <FormulirKksaManual
           penugasanId={penugasanId}
+          skill={skillPenugasan}
           sasaranIds={Array.from(new Set(items.map((x) => x.sasaran_id).filter(Boolean)))}
           onBatal={() => setTulisManual(false)}
           onSelesai={(id) => { setTulisManual(false); setMsg(`Temuan ${id} tersimpan (manual).`); refresh(); }}
@@ -4061,7 +4073,35 @@ function TemuanReviewPanel({
                 {expanded[t.id_temuan] && !editing[t.id_temuan] && (
                   <div className="text-[11px] text-gray-600 mt-2 space-y-1 pl-3 border-l-2 border-gray-200">
                     {t.kondisi && <div><b>Kondisi:</b> {t.kondisi}</div>}
-                    {t.kriteria && <div><b>Kriteria:</b> {t.kriteria}</div>}
+                    {t.kriteria && (
+                      <div>
+                        <b>Kriteria:</b> {t.kriteria}
+                        {Array.isArray(t.sumber_kriteria) && t.sumber_kriteria.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {t.sumber_kriteria.map((sk, i) => (
+                              <span
+                                key={i}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                  sk.tipe === 'UNGGAHAN'
+                                    ? 'bg-green-50 text-green-800 border-green-300'
+                                    : sk.tipe === 'KETIK_AUDITOR'
+                                    ? 'bg-sky-50 text-sky-800 border-sky-300'
+                                    : 'bg-gray-100 text-gray-700 border-gray-300'
+                                }`}
+                                title={[sk.berkas, sk.bagian].filter(Boolean).join(' — ')}
+                              >
+                                {sk.tipe === 'UNGGAHAN'
+                                  ? '📄 berkas penugasan'
+                                  : sk.tipe === 'KETIK_AUDITOR'
+                                  ? '✍ diketik auditor'
+                                  : '📚 referensi bawaan'}
+                                {sk.bagian ? ` · ${sk.bagian}` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div>
                       <b>Sebab:</b>{' '}
                       {t.sebab ? t.sebab : (
