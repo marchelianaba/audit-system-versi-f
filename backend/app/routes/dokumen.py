@@ -112,10 +112,17 @@ async def upload_dokumen(
     if staged_path:
         initial_status = DokumenStatus.READY
     elif jenis_final in ("TOR", "RAB", "KAK", "HPS", "RFI", "KONTRAK", "BUKTI-LAPANGAN",
-                         "CATATAN-AUDITOR"):
+                         "CATATAN-AUDITOR", "KRITERIA", "OBJEK"):
         # BUKTI-LAPANGAN ikut INGESTING: digest generik folder 04-bukti-lapangan
         # dijalankan utk semua skill (lihat _run_ingestion) — dokumen bukti yang
         # diupload HARUS bisa dibaca agen, bukan cuma tersimpan.
+        #
+        # KRITERIA & OBJEK ikut sejak 19 Agu 2026. Sebelumnya keduanya langsung
+        # READY sehingga background task ingestion TIDAK PERNAH dijalankan —
+        # akibatnya berkas kriteria/objek pada skill *-umum tak pernah masuk
+        # `_INGESTED/` dan agen tak bisa membacanya lewat `read_ingested_digest`,
+        # berlawanan dengan yang dijanjikan prompt agen. Sekarang jadi tulang
+        # punggung skill umum, jadi wajib di-digest.
         initial_status = DokumenStatus.INGESTING
     else:
         # ST, KP, PKP, OTHER, None — tidak ada V6 digest script untuk ini,

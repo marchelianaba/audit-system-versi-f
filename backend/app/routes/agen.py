@@ -250,7 +250,8 @@ async def _run_ingestion(penugasan_id: int) -> None:
     # (digest_folder). Parser terstruktur digest_pengadaan.py DIPENSIUNKAN
     # (rapuh pada dokumen riil). Digest generik andal + sudah PDF/Word/Excel.
     _generic_jenis = (None, "ST", "KP", "PKP", "OTHER", "KAK", "HPS", "RFI", "KONTRAK",
-                      "CATATAN-AUDITOR")  # catatan auditor = bahan utama skema KKSA
+                      "CATATAN-AUDITOR",  # catatan auditor = bahan utama skema KKSA
+                      "KRITERIA", "OBJEK")  # tulang punggung skill *-umum
     other_docs = [d for d in docs if d.jenis in _generic_jenis
                   or (d.jenis in ("TOR", "RAB") and not _is_rka)]
 
@@ -350,6 +351,30 @@ async def _run_ingestion(penugasan_id: int) -> None:
                 generic_result.get("n_total", 0),
                 generic_result.get("per_jenis", {}),
             )
+            # Sambungkan hasil baca ke baris Dokumen supaya TERLIHAT di layar.
+            # Tanpa ini, berkas yang tak terbaca (hasil pindai) tetap tampil
+            # "READY" — auditor mengira sudah terbaca padahal isinya kosong.
+            for rel in generic_result.get("files", []):
+                try:
+                    dj = json.loads((folder / rel).read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                src = dj.get("file")
+                if not src:
+                    continue
+                src_abs = str((folder / src).resolve())
+                for d in docs:
+                    if str(Path(d.file_path).resolve()) != src_abs:
+                        continue
+                    upd = updates.setdefault(d.id, {})
+                    upd["status"] = DokumenStatus.READY
+                    upd["ingested_json_path"] = str(folder / rel)
+                    catatan = (dj.get("catatan_baca") or "").strip()
+                    # `error_message` dipakai UI sebagai keterangan status berkas.
+                    # Diisi juga saat BERHASIL via OCR — bukan galat, melainkan
+                    # peringatan agar kutipan diperiksa ulang.
+                    upd["error_message"] = catatan or None
+                    break
     except Exception as exc:  # noqa: BLE001 — best-effort, log saja
         log.warning("digest_generic gagal untuk penugasan_id=%d: %s", penugasan_id, exc)
 
@@ -380,7 +405,10 @@ async def _run_ingestion(penugasan_id: int) -> None:
             d.status = upd.get("status", d.status)
             if "ingested_json_path" in upd:
                 d.ingested_json_path = upd["ingested_json_path"]
-            if upd.get("error_message"):
+            if "error_message" in upd:
+                # None = bersihkan keterangan lama (mis. berkas diganti versi teks)
+                d.error_message = upd["error_message"]
+            elif upd.get("error_message"):
                 d.error_message = upd["error_message"]
             if upd.get("status") == DokumenStatus.READY:
                 d.ingested_at = now

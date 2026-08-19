@@ -51,12 +51,24 @@ def _tokenize(text: str) -> list[str]:
 
 
 def _extract_pages(pdf_path: Path) -> list[dict]:
+    """Teks per halaman untuk indeks bukti.
+
+    Halaman hasil pindai (teks kosong) diambil dari simpanan OCR bila ada —
+    digest bukti lapangan sudah meng-OCR-nya lebih dulu. Tanpa ini, berita acara
+    hasil pindai tak pernah muncul di `search_bukti` meski isinya sudah terbaca
+    sistem. Tidak memicu OCR baru di sini (kebijakan OCR ada di jalur digest).
+    """
     from pdfplumber import open as open_pdf
+
+    from app.liteparse_extract import read_cached_ocr_page
+
     pages: list[dict] = []
     try:
         with open_pdf(str(pdf_path)) as pdf:
             for i, page in enumerate(pdf.pages, start=1):
                 txt = (page.extract_text() or "").strip()
+                if not txt:
+                    txt = (read_cached_ocr_page(pdf_path, i) or "").strip()
                 if txt:
                     pages.append({"page": i, "text": txt[:_PAGE_TEXT_CAP]})
     except Exception:  # noqa: BLE001 — PDF rusak/terenkripsi: lewati, jangan crash

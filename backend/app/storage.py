@@ -110,8 +110,21 @@ def classify_doc_by_filename(name: str) -> str:
         return "RFI"
     if "kontrak" in n or "perjanjian" in n:
         return "KONTRAK"
-    # Skill criteria-driven (non RKA/PBJ): auditor unggah kriteria + dokumen objek.
-    if "kriteria" in n or "juknis" in n or "juklak" in n:
+    # Skill criteria-driven (skill *-umum): auditor unggah kriteria + dokumen objek.
+    #
+    # Pola diperluas agar SEIRAMA dengan `digest_generic._JENIS_PATTERNS`. Dulu
+    # penebak di sini hanya mengenal "kriteria/juknis/juklak", sementara digest
+    # mengenal regulasi (permen/perpres/PP/UU/perka) — akibatnya berkas bernama
+    # "Permen 5 2024.pdf" ditandai OTHER saat diunggah tapi KRITERIA saat
+    # di-digest. Dua sumber kebenaran yang diam-diam melenceng.
+    if (
+        "kriteria" in n or "juknis" in n or "juklak" in n
+        or "pedoman" in n or "kuesioner" in n or "checklist" in n
+        or "standar operasional" in n
+        or _token(n, "sop")
+        or re.search(r"(?<![a-z])(permen|perpres|perpu|perka|perlem|perdirjen|kepmen)(?![a-z])", n)
+        or re.search(r"(?<![a-z])(pp|uu|se|perpres)[\s_\-.]*\d", n)
+    ):
         return "KRITERIA"
     if "objek" in n or "obyek" in n:
         return "OBJEK"

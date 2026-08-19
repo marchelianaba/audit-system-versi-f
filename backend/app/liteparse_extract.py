@@ -16,6 +16,7 @@ Modul ini TIDAK menyentuh V6 dan TIDAK panggil LLM sama sekali.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import threading
@@ -66,13 +67,31 @@ def available() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# OCR fallback (RapidOCR + PyMuPDF) — untuk PDF scan & file gambar.
-# (v10.1: transplant dari v8.) Murni pip (ONNX), TANPA Tesseract/poppler.
-# Dipakai HANYA saat LiteParse gagal/kosong → tak memperlambat dokumen digital.
+# OCR TERARAH (RapidOCR + PyMuPDF) — untuk PDF hasil pindai & berkas gambar.
+# Murni pip (ONNX), TANPA Tesseract/poppler.
+#
+# KEBIJAKAN (keputusan pengguna, 19 Agu 2026): OCR TIDAK lagi jalan untuk semua
+# dokumen. Ia mahal (±1-3 detik/halaman) dan dulu dipakai membabi buta pada
+# SETIAP berkas yang teksnya kosong, hanya 8 halaman pertama, lalu hasilnya
+# digabung jadi satu blok sehingga nomor halaman HILANG — padahal doktrin
+# mewajibkan tiap kutipan membawa nomor halaman. Sekarang:
+#
+#   • KRITERIA        → hanya halaman yang DITUNJUK auditor di Daftar Kriteria
+#   • BUKTI-LAPANGAN  → seluruh berkas, dibatasi OCR_MAX_BUKTI halaman
+#   • selebihnya      → TIDAK di-OCR; statusnya dilaporkan jujur ke pengguna
+#
+# Pemanggil WAJIB meminta OCR eksplisit lewat `ocr_pages()`; `extract_pages()`
+# tidak pernah lagi memicu OCR sendiri. Hasil per halaman disimpan (kunci:
+# sha256 berkas + nomor halaman) sehingga satu halaman tak pernah di-OCR dua
+# kali, bahkan lintas penugasan.
 # ---------------------------------------------------------------------------
 _RAPIDOCR = None
 _RAPIDOCR_TRIED = False
 _OCR_IMG_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp"}
+
+# Batas halaman OCR untuk bukti lapangan (berita acara/observasi lazimnya pendek).
+# Lebih dari ini: sisanya tidak dibaca, TAPI dikatakan terus terang.
+OCR_MAX_BUKTI = 10
 
 
 def _get_rapidocr():
@@ -83,7 +102,7 @@ def _get_rapidocr():
     try:
         from rapidocr_onnxruntime import RapidOCR
         _RAPIDOCR = RapidOCR()
-    except Exception:  # noqa: BLE001 — lib opsional
+    except Exception:  # noqa: BLE001 — pustaka opsional
         _RAPIDOCR = None
     return _RAPIDOCR
 
@@ -97,50 +116,165 @@ def _ocr_lines_to_text(res) -> str:
         return ""
 
 
-def _ocr_fallback(path: str | Path, max_pages: int = 8) -> str:
-    """OCR PDF-scan (render halaman via PyMuPDF) atau file gambar (langsung).
-
-    Return teks hasil OCR, atau '' bila lib tak tersedia / tak ada teks.
-    """
-    ocr = _get_rapidocr()
-    if ocr is None:
+def file_sha256(path: str | Path) -> str:
+    """Sidik jari berkas — kunci simpanan hasil OCR."""
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError:
         return ""
+    return h.hexdigest()
+
+
+def _ocr_cache_dir() -> "Path | None":
+    """Folder simpanan hasil OCR (di bawah APP_DATA_DIR). None bila tak tersedia."""
+    try:
+        from app.config import get_settings  # impor malas: hindari lingkar impor
+
+        d = get_settings().data_dir / "_ocr-cache"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    except Exception:  # noqa: BLE001 — simpanan itu optimasi, bukan syarat
+        return None
+
+
+def _cache_path(sha: str, halaman: int) -> "Path | None":
+    d = _ocr_cache_dir()
+    if d is None or not sha:
+        return None
+    return d / f"{sha}-p{halaman:04d}.txt"
+
+
+def read_cached_ocr_page(path: str | Path, halaman: int) -> "str | None":
+    """Teks OCR sebuah halaman BILA sudah pernah dibaca. Tak pernah meng-OCR baru.
+
+    Dipakai `read_pdf_page` & indeks bukti: keduanya boleh MEMAKAI hasil OCR yang
+    sudah ada, tapi tidak boleh memicu pekerjaan OCR baru (mahal, di luar kebijakan).
+    """
+    cp = _cache_path(file_sha256(Path(path)), int(halaman))
+    if cp is None or not cp.is_file():
+        return None
+    try:
+        txt = cp.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return txt or None
+
+
+def ocr_pages(
+    path: str | Path,
+    *,
+    pages: "Iterable[int] | None" = None,
+    max_pages: int = OCR_MAX_BUKTI,
+) -> dict:
+    """OCR halaman tertentu (1-based). Return {nomor_halaman: teks}.
+
+    `pages=None` → halaman 1..max_pages. Berkas gambar selalu dianggap 1 halaman.
+    Halaman yang sudah pernah di-OCR diambil dari simpanan, tidak diulang.
+    Return {} bila pustaka OCR tak tersedia atau berkas tak terbaca.
+    """
     p = Path(path)
     ext = p.suffix.lower()
+    sha = file_sha256(p)
+    hasil: dict = {}
+
+    if ext in _OCR_IMG_EXTS:
+        want = [1]
+    elif ext == ".pdf":
+        want = sorted({int(n) for n in pages}) if pages else []
+    else:
+        return {}
+
+    def _ambil_simpanan(nomor):
+        sisa = []
+        for n in nomor:
+            cp = _cache_path(sha, n)
+            if cp is not None and cp.is_file():
+                try:
+                    hasil[n] = cp.read_text(encoding="utf-8")
+                    continue
+                except OSError:
+                    pass
+            sisa.append(n)
+        return sisa
+
+    def _simpan(n, teks):
+        cp = _cache_path(sha, n)
+        if cp is not None:
+            try:
+                cp.write_text(teks, encoding="utf-8")
+            except OSError:
+                pass
+
+    sisa = _ambil_simpanan(want) if want else []
+    if want and not sisa:
+        return hasil
+
+    ocr = _get_rapidocr()
+    if ocr is None:
+        return hasil
+
     try:
         if ext in _OCR_IMG_EXTS:
             res, _ = ocr(str(p))
-            return _ocr_lines_to_text(res).strip()
-        if ext == ".pdf":
-            import tempfile
-            try:
-                import fitz  # PyMuPDF
-            except Exception:  # noqa: BLE001
-                return ""
-            out: list[str] = []
-            doc = fitz.open(str(p))
-            try:
-                for i in range(min(len(doc), max_pages)):
-                    pix = doc[i].get_pixmap(dpi=200)
-                    tf = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-                    tf.close()
+            teks = _ocr_lines_to_text(res).strip()
+            hasil[1] = teks
+            _simpan(1, teks)
+            return hasil
+
+        import tempfile
+        try:
+            import fitz  # PyMuPDF
+        except Exception:  # noqa: BLE001
+            return hasil
+        doc = fitz.open(str(p))
+        try:
+            total = len(doc)
+            if want:
+                target = sisa
+            else:
+                target = _ambil_simpanan(list(range(1, min(total, max_pages) + 1)))
+            for n in target:
+                if n < 1 or n > total:
+                    continue
+                pix = doc[n - 1].get_pixmap(dpi=200)
+                tf = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                tf.close()
+                try:
+                    pix.save(tf.name)
+                    res, _ = ocr(tf.name)
+                    teks = _ocr_lines_to_text(res).strip()
+                    hasil[n] = teks
+                    _simpan(n, teks)
+                finally:
                     try:
-                        pix.save(tf.name)
-                        res, _ = ocr(tf.name)
-                        txt = _ocr_lines_to_text(res)
-                        if txt:
-                            out.append(txt)
-                    finally:
-                        try:
-                            os.unlink(tf.name)
-                        except OSError:
-                            pass
-            finally:
-                doc.close()
-            return "\n".join(out).strip()
+                        os.unlink(tf.name)
+                    except OSError:
+                        pass
+        finally:
+            doc.close()
+    except Exception:  # noqa: BLE001 — OCR gagal = tak ada teks, bukan crash
+        return hasil
+    return hasil
+
+
+def pdf_page_count(path: str | Path) -> int:
+    """Jumlah halaman PDF (0 bila gagal/bukan PDF). Untuk pesan status jujur."""
+    p = Path(path)
+    if p.suffix.lower() != ".pdf":
+        return 0
+    try:
+        import fitz
+
+        doc = fitz.open(str(p))
+        try:
+            return len(doc)
+        finally:
+            doc.close()
     except Exception:  # noqa: BLE001
-        return ""
-    return ""
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -194,12 +328,10 @@ def extract_pages(
             # Bila hanya 1 doc page kosong tapi `result.text` ada (format non-paged).
             if not pages and getattr(result, "text", ""):
                 pages = [result.text]
-    # v10.1 (transplant OCR fallback v8): bila LiteParse kosong/gagal (PDF scan
-    # atau file gambar) → OCR RapidOCR+PyMuPDF (murni pip, tanpa Tesseract).
-    if not any((pg or "").strip() for pg in pages):
-        ocr_text = _ocr_fallback(p)
-        if ocr_text:
-            pages = [ocr_text]
+    # OCR TIDAK dipicu di sini (lihat kebijakan di blok OCR di atas). Berkas yang
+    # teksnya kosong dikembalikan apa adanya; pemanggil yang berhak meng-OCR
+    # (digest KRITERIA & BUKTI-LAPANGAN) memanggil `ocr_pages()` secara eksplisit,
+    # dan pemanggil lain melaporkan "tidak terbaca" secara jujur ke pengguna.
     return pages
 
 

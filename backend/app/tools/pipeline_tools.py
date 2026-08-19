@@ -273,12 +273,33 @@ async def read_pdf_page(args: dict) -> dict:
                     "is_error": True,
                 }
             text = pdf.pages[idx].extract_text() or ""
-        return {"content": [{"type": "text", "text": text[:4000]}]}
     except Exception as e:
         return {
             "content": [{"type": "text", "text": f"FAILED|{str(e)[:200]}"}],
             "is_error": True,
         }
+
+    # Halaman hasil pindai: teksnya kosong. Pakai hasil OCR yang SUDAH tersimpan
+    # (dari digest kriteria/bukti lapangan) — tapi JANGAN memicu OCR baru di sini:
+    # OCR mahal dan kebijakannya ditetapkan di jalur digest, bukan per panggilan
+    # agen. Bila memang belum ada, katakan terus terang supaya agen tidak
+    # menyimpulkan "halaman ini kosong" dari ketiadaan teks.
+    if not (text or "").strip():
+        from app.liteparse_extract import read_cached_ocr_page
+
+        ocr = read_cached_ocr_page(p, halaman)
+        if ocr and ocr.strip():
+            header = f"[{p.name} · hal {halaman} · dibaca via OCR — periksa ketepatan kutipan]\n"
+            return {"content": [{"type": "text", "text": (header + ocr)[:4000]}]}
+        return {
+            "content": [{"type": "text", "text": (
+                f"TIDAK_TERBACA|{p.name} halaman {halaman} tidak memuat teks yang bisa dibaca "
+                "(kemungkinan hasil pindai/foto). JANGAN simpulkan halaman ini kosong. "
+                "Bila isinya dibutuhkan, minta auditor mengunggah versi teks atau "
+                "menunjuk halaman ini di Daftar Kriteria."
+            )}],
+        }
+    return {"content": [{"type": "text", "text": text[:4000]}]}
 
 
 @tool(

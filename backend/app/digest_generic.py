@@ -317,6 +317,9 @@ def digest_one_file(
     file_path: Path,
     *,
     max_text_chars: int = 12000,
+    izin_ocr: bool = False,
+    ocr_halaman: "list[int] | None" = None,
+    ocr_maks: int = 10,
 ) -> dict[str, Any]:
     """Digest satu dokumen → dict ringkas. Pakai LiteParse untuk ekstraksi teks.
 
@@ -361,6 +364,9 @@ def digest_one_file(
             "file": str(file_path),
             "jenis": classify_dokumen(file_path),
             "size_bytes": file_path.stat().st_size if file_path.is_file() else 0,
+            "terbaca": False,
+            "dibaca_via": "gagal",
+            "catatan_baca": f"berkas tidak bisa dibuka ({e})",
             "_digest_meta": {
                 "engine": "liteparse",
                 "error": f"ekstraksi gagal: {e}",
@@ -368,12 +374,60 @@ def digest_one_file(
             },
         }
 
+    ada_teks = any((pg or "").strip() for pg in pages)
+    dibaca_via = "teks" if ada_teks else "kosong"
+    catatan_baca = ""
+
+    # OCR hanya bila pemanggil BERHAK (KRITERIA dgn halaman ditunjuk, atau
+    # BUKTI-LAPANGAN) dan teksnya memang kosong — dokumen digital tak pernah
+    # menyentuh OCR sehingga tidak melambat sedikit pun.
+    if not ada_teks and izin_ocr:
+        from app.liteparse_extract import ocr_pages as _ocr, pdf_page_count as _npage
+
+        hasil_ocr = _ocr(file_path, pages=ocr_halaman or None, max_pages=ocr_maks)
+        if hasil_ocr:
+            total = _npage(file_path) or max(hasil_ocr)
+            # Tempatkan hasil OCR pada POSISI HALAMAN aslinya. Versi lama
+            # menggabungkan semuanya jadi satu blok sehingga nomor halaman
+            # hilang — padahal tiap kutipan wajib membawa nomor halaman.
+            pages = [""] * total
+            for n, teks in hasil_ocr.items():
+                if 1 <= n <= total:
+                    pages[n - 1] = teks
+            ada_teks = any((pg or "").strip() for pg in pages)
+            dibaca_via = "ocr" if ada_teks else "ocr-kosong"
+            if ada_teks:
+                dibaca = sorted(n for n, t in hasil_ocr.items() if (t or "").strip())
+                if ocr_halaman:
+                    catatan_baca = (
+                        "dibaca lewat OCR pada halaman yang Anda tunjuk "
+                        f"({', '.join(str(n) for n in dibaca)}) — periksa ketepatan kutipan"
+                    )
+                elif total > ocr_maks:
+                    catatan_baca = (
+                        f"berkas hasil pindai {total} halaman — {ocr_maks} halaman pertama "
+                        "yang dibaca; sisanya tidak dianalisis"
+                    )
+                else:
+                    catatan_baca = "dibaca lewat OCR — periksa ketepatan kutipan"
+            else:
+                catatan_baca = "tidak ada teks terbaca; berkas tersimpan sebagai lampiran"
+
+    if not ada_teks and not catatan_baca:
+        catatan_baca = (
+            "tidak terbaca — kemungkinan hasil pindai/foto. Unggah versi teks "
+            "(Word/PDF digital) bila isinya perlu dianalisis."
+        )
+
     full_text = "\n\n".join(p for p in pages if p)
     ringkasan = _ringkasan_representatif(pages, max_text_chars)
 
     return {
         "file": str(file_path),
         "jenis": classify_dokumen(file_path),
+        "terbaca": ada_teks,
+        "dibaca_via": dibaca_via,
+        "catatan_baca": catatan_baca,
         "halaman_total": len(pages),
         "halaman_total_chars": len(full_text),
         "size_bytes": file_path.stat().st_size,
@@ -439,8 +493,28 @@ def digest_folder(
     counter_per_jenis: dict[str, int] = {}
     output_files: list[str] = []
     n_skip = 0
+    # Kebijakan OCR per jenis (keputusan pengguna 19 Agu 2026):
+    #   KRITERIA       → hanya halaman yang DITUNJUK auditor di Daftar Kriteria
+    #   BUKTI-LAPANGAN → seluruh berkas, dibatasi OCR_MAX_BUKTI halaman
+    #   selebihnya     → tanpa OCR; ketidakterbacaan dilaporkan jujur
+    from app import daftar_kriteria as _dk
+    from app.liteparse_extract import OCR_MAX_BUKTI
+
+    berkas_kriteria = set(_dk.berkas_kriteria(folder))
+
     for f in files_to_process:
-        digest = digest_one_file(f)
+        jenis_awal = classify_dokumen(f)
+        is_kriteria = jenis_awal == "KRITERIA" or f.name.strip().lower() in berkas_kriteria
+        if is_kriteria:
+            halaman = _dk.halaman_untuk(folder, f)
+            # Tanpa penunjuk halaman tak ada yang bisa di-OCR pada berkas pindai —
+            # itu disengaja: auditor diminta menyebutkan halamannya (lihat
+            # daftar_kriteria.py), bukan sistem menebak dengan menyapu berkas.
+            digest = digest_one_file(f, izin_ocr=bool(halaman), ocr_halaman=halaman)
+        elif jenis_awal == "BUKTI-LAPANGAN":
+            digest = digest_one_file(f, izin_ocr=True, ocr_maks=OCR_MAX_BUKTI)
+        else:
+            digest = digest_one_file(f)
         jenis = digest.get("jenis", "OTHER")
         counter_per_jenis[jenis] = counter_per_jenis.get(jenis, 0) + 1
         # Output filename: <jenis-lower>-<nn>.json
