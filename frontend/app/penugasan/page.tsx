@@ -84,12 +84,42 @@ function tanggalDisplay(p: Penugasan): string {
   return refDate(p).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+// Cerminan matriks backend (app/deteksi_skill.py) untuk menampilkan hasil tanpa
+// bolak-balik ke server tiap ganti pilihan. Backend tetap penentu akhir saat
+// penugasan dibuat — ini murni tampilan.
+function skillDariMatriks(jenis: string, sub: string): string {
+  if (jenis === 'Reviu') {
+    if (sub === 'RKA-K/L') return 'reviu-rka-kl';
+    if (sub === 'Pengadaan Barang/Jasa') return 'reviu-pengadaan';
+    return 'reviu-umum';
+  }
+  if (jenis === 'Audit') return 'audit-umum';
+  if (jenis === 'Evaluasi') return 'evaluasi-umum';
+  if (jenis === 'Pemantauan') return 'pemantauan-umum';
+  return '';
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [penugasan, setPenugasan] = useState<Penugasan[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [obyek, setObyek] = useState('');
   const [skill, setSkill] = useState<Skill>('reviu-rka-kl');
+  // Jenis + Sub Penugasan MENENTUKAN skill lewat matriks di backend. Skill tak
+  // lagi dipilih bebas: Pengendali Teknis tak perlu hafal skill mana yang cocok,
+  // dan salah pilih tak lagi mengunci penugasan tanpa jalan perbaikan.
+  const [jenis, setJenis] = useState('');
+  const [sub, setSub] = useState('');
+  const [deteksi, setDeteksi] = useState<{
+    skill: string | null;
+    penjelasan: string;
+    ambigu: boolean;
+    jenis_pilihan: string[];
+    sub_pilihan: string[];
+  } | null>(null);
+  // Jalan keluar untuk kasus tak lazim — pengecualian yang disengaja, bukan
+  // pilihan pertama seperti sebelumnya.
+  const [skillManual, setSkillManual] = useState(false);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [nomorSt, setNomorSt] = useState('');
   const [loading, setLoading] = useState(true);
@@ -121,6 +151,26 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
+  // Judul → tebakan Jenis & Sub. Hanya ISIAN AWAL: yang mengikat tetap pilihan
+  // Pengendali Teknis. Ditunda 400 ms supaya tiap ketikan tak memanggil server.
+  useEffect(() => {
+    if (!showForm || skillManual) return;
+    const t = setTimeout(() => {
+      api
+        .deteksiSkill(obyek)
+        .then((d) => {
+          setDeteksi(d);
+          // Hanya mengisi yang MASIH kosong — jangan menimpa pilihan yang sudah
+          // dibenarkan pengguna hanya karena ia menyunting judulnya lagi.
+          if (d.jenis && !jenis) setJenis(d.jenis);
+          if (d.sub && !sub) setSub(d.sub);
+        })
+        .catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obyek, showForm, skillManual]);
+
   // slug skill → label ramah (dari registry; fallback ke slug).
   const skillLabel = useMemo(() => {
     const m = new Map(skills.map((s) => [s.slug, s.jenis || s.name]));
@@ -130,7 +180,11 @@ export default function DashboardPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!obyek.trim()) {
-      setError('Obyek penugasan wajib diisi.');
+      setError('Judul/obyek penugasan wajib diisi.');
+      return;
+    }
+    if (!skillManual && (!jenis || !sub)) {
+      setError('Jenis dan Sub Penugasan wajib dipilih — skill ditentukan dari keduanya.');
       return;
     }
     if (!nomorSt.trim()) {
@@ -145,7 +199,11 @@ export default function DashboardPage() {
     try {
       const p = await api.createPenugasan({
         obyek,
-        skill,
+        // Skill hanya dikirim bila PT sengaja menentukannya manual; selain itu
+        // backend yang menurunkannya dari Jenis + Sub (satu sumber kebenaran).
+        skill: skillManual ? skill : undefined,
+        jenis_penugasan: jenis || undefined,
+        sub_penugasan: sub || undefined,
         nomor_st: nomorSt || undefined,
       });
       setPenugasan([p, ...penugasan]);
@@ -219,41 +277,111 @@ export default function DashboardPage() {
           >
             <h3 className="font-semibold text-primary-dark">Penugasan Baru</h3>
             <label className="block">
-              <span className="text-sm text-gray-700">Obyek penugasan</span>
+              <span className="text-sm text-gray-700">Judul / obyek penugasan</span>
               <input
                 value={obyek}
                 onChange={(e) => setObyek(e.target.value)}
                 required
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                placeholder="Contoh: RKA-K/L Dit. Pengendalian 2027"
+                placeholder="Contoh: Reviu atas Penyusunan RKA-K/L Dit. Pengendalian TA 2027"
               />
             </label>
-            <label className="block">
-              <span className="text-sm text-gray-700">Skill</span>
-              <select
-                value={skill}
-                onChange={(e) => setSkill(e.target.value as Skill)}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
-              >
-                {skills.length === 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm text-gray-700">Jenis Penugasan</span>
+                <select
+                  value={jenis}
+                  onChange={(e) => setJenis(e.target.value)}
+                  disabled={skillManual}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white disabled:bg-gray-50"
+                >
+                  <option value="">— pilih —</option>
+                  {(deteksi?.jenis_pilihan || ['Audit', 'Reviu', 'Evaluasi', 'Pemantauan']).map(
+                    (j) => (
+                      <option key={j} value={j}>
+                        {j}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm text-gray-700">Sub Penugasan</span>
+                <select
+                  value={sub}
+                  onChange={(e) => setSub(e.target.value)}
+                  disabled={skillManual}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white disabled:bg-gray-50"
+                >
+                  <option value="">— pilih —</option>
+                  {(deteksi?.sub_pilihan || ['RKA-K/L', 'Pengadaan Barang/Jasa', 'Lainnya']).map(
+                    (x) => (
+                      <option key={x} value={x}>
+                        {x}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+            </div>
+
+            {!skillManual ? (
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                {jenis && sub ? (
                   <>
-                    <option value="reviu-rka-kl">Reviu RKA-K/L</option>
-                    <option value="reviu-pengadaan">Reviu Pengadaan</option>
-                    <option value="reviu-umum">Reviu Umum</option>
-                    <option value="audit-umum">Audit Umum</option>
-                    <option value="evaluasi-umum">Evaluasi Umum</option>
-                    <option value="pemantauan-umum">Pemantauan Umum</option>
+                    <span className="text-gray-700">Skill: </span>
+                    <strong className="text-primary-dark">
+                      {skillLabel(skillDariMatriks(jenis, sub))}
+                    </strong>
+                    <span className="text-green-700 text-xs"> ✓ ditentukan otomatis</span>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Alasan: {jenis} × {sub}
+                    </div>
                   </>
                 ) : (
-                  skills.map((s) => (
-                    <option key={s.slug} value={s.slug}>
-                      {s.jenis || s.name}
-                      {s.has_pipeline ? '' : ' · criteria-driven'}
-                    </option>
-                  ))
+                  <span className="text-gray-500">
+                    Pilih Jenis dan Sub Penugasan — skill ditentukan otomatis dari keduanya.
+                  </span>
                 )}
-              </select>
-            </label>
+                {deteksi?.ambigu && (
+                  <div className="text-xs text-amber-700 mt-1">
+                    ⚠ Judul memuat kata kunci RKA-K/L dan Pengadaan sekaligus — mohon pilih Sub
+                    Penugasan sendiri.
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSkillManual(true)}
+                  className="text-xs text-primary hover:underline mt-1"
+                >
+                  tentukan manual
+                </button>
+              </div>
+            ) : (
+              <label className="block">
+                <span className="text-sm text-gray-700">
+                  Skill (ditentukan manual){' '}
+                  <button
+                    type="button"
+                    onClick={() => setSkillManual(false)}
+                    className="text-xs text-primary hover:underline font-normal"
+                  >
+                    kembali otomatis
+                  </button>
+                </span>
+                <select
+                  value={skill}
+                  onChange={(e) => setSkill(e.target.value as Skill)}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
+                >
+                  {skills.map((sk) => (
+                    <option key={sk.slug} value={sk.slug}>
+                      {sk.jenis || sk.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="block">
               <span className="text-sm text-gray-700">Nomor ST (opsional)</span>
               <input

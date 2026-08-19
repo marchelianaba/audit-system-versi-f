@@ -105,6 +105,10 @@ export interface Penugasan {
   kode: string;
   obyek: string;
   skill: Skill;
+  /** Identitas ala SIMWAS. Keduanya MENENTUKAN skill lewat matriks di backend —
+   *  skill bukan lagi pilihan bebas. Null pada penugasan lama. */
+  jenis_penugasan?: string | null;
+  sub_penugasan?: string | null;
   nomor_st: string | null;
   tanggal_st: string | null;
   status: string;
@@ -247,7 +251,10 @@ export const api = {
 
   createPenugasan: (payload: {
     obyek: string;
-    skill: Skill;
+    /** Boleh dikosongkan: backend menurunkannya dari jenis + sub penugasan. */
+    skill?: Skill;
+    jenis_penugasan?: string;
+    sub_penugasan?: string;
     nomor_st?: string;
     tanggal_st?: string;
   }) =>
@@ -255,6 +262,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  /** Tebak Jenis & Sub dari judul penugasan — pembantu pengisian, bukan penentu.
+   *  Yang mengikat tetap Jenis + Sub yang dipilih Pengendali Teknis. */
+  deteksiSkill: (judul: string) =>
+    request<{
+      jenis: string | null;
+      sub: string | null;
+      ambigu: boolean;
+      skill: string | null;
+      alasan: string;
+      penjelasan: string;
+      jenis_pilihan: string[];
+      sub_pilihan: string[];
+    }>(`/penugasan/deteksi-skill?judul=${encodeURIComponent(judul)}`),
+
+  /** Koreksi Jenis/Sub (dan karenanya skill). PT saja, hanya sebelum tahap KKP. */
+  ubahSkill: (
+    penugasanId: number,
+    payload: { jenis_penugasan?: string; sub_penugasan?: string; skill?: string; alasan?: string }
+  ) =>
+    request<{ ok: boolean; skill: string; skill_sebelumnya: string; penjelasan: string }>(
+      `/penugasan/${penugasanId}/skill`,
+      { method: 'PUT', body: JSON.stringify(payload) }
+    ),
 
   listDokumen: (penugasanId: number) =>
     request<Dokumen[]>(`/dokumen?penugasan_id=${penugasanId}`),

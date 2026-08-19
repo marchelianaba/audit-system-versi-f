@@ -262,6 +262,8 @@ async def create_penugasan(
         kode=kode,
         obyek=payload.obyek,
         skill=payload.skill,
+        jenis_penugasan=payload.jenis_penugasan,
+        sub_penugasan=payload.sub_penugasan,
         nomor_st=payload.nomor_st,
         tanggal_st=payload.tanggal_st,
         status=PenugasanStatus.DRAFT,
@@ -288,6 +290,23 @@ async def list_penugasan(
     rows = (await db.execute(stmt)).scalars().all()
     dok_map = await _dokumen_status_map(db, [r.id for r in rows])
     return [_with_derived_status(r, dok_map.get(r.id, [])) for r in rows]
+
+
+@router.get("/deteksi-skill")
+async def deteksi_skill_dari_judul(
+    judul: str = "",
+    _current: tuple[User, Role] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Tebak Jenis & Sub dari judul penugasan + skill yang dihasilkannya.
+
+    Hanya PEMBANTU PENGISIAN: hasilnya menjadi isian awal yang tinggal
+    dibenarkan Pengendali Teknis. Yang mengikat tetap Jenis + Sub yang dipilih,
+    bukan tebakan ini — judul bisa memuat dua kata kunci sekaligus, dan menebak
+    dalam keadaan begitu berarti mengunci penugasan ke skill yang keliru.
+    """
+    from app.deteksi_skill import deteksi
+
+    return deteksi(judul)
 
 
 @router.get("/{penugasan_id}", response_model=PenugasanOut)
@@ -425,6 +444,107 @@ async def _get_penugasan_or_404(
     if not p:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Penugasan tidak ditemukan")
     return assert_akses_penugasan(p, current[0])
+
+
+class UbahSkillPayload(BaseModel):
+    jenis_penugasan: str | None = None
+    sub_penugasan: str | None = None
+    skill: str | None = None
+    alasan: str | None = None
+
+
+# Tahap yang masih boleh diubah skill-nya. Setelah kertas kerja mulai disusun,
+# mengganti skill akan membuat temuan yang sudah ada tidak selaras dengan
+# pipeline, format laporan, dan doktrin agennya — jadi dikunci.
+_STATUS_BOLEH_UBAH_SKILL = {
+    PenugasanStatus.DRAFT,
+    PenugasanStatus.KP_DONE,
+    PenugasanStatus.PKP_KT_DONE,
+    PenugasanStatus.PKP_DONE,
+}
+
+
+@router.put("/{penugasan_id}/skill")
+async def ubah_skill(
+    penugasan_id: int,
+    payload: UbahSkillPayload,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Koreksi Jenis/Sub (dan karenanya skill). Hanya PT, sebelum tahap KKP.
+
+    Skill menentukan pipeline, format laporan, dan doktrin agen. Menggantinya di
+    tengah jalan membuat temuan yang sudah tersusun tidak selaras — karena itu
+    dibatasi ke tahap perencanaan, dan setiap koreksi dicatat siapa & kapan.
+    """
+    from app.deteksi_skill import jelaskan, skill_dari
+    from app.skills_registry import available_slugs, skill_exists
+
+    user, role = current
+    if role != Role.PT:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Hanya Pengendali Teknis (PT) yang boleh mengoreksi skill. Role Anda: {role.value}.",
+        )
+    p = await _get_penugasan_or_404(db, penugasan_id, current)
+    st = p.status if isinstance(p.status, PenugasanStatus) else PenugasanStatus(p.status)
+    if st not in _STATUS_BOLEH_UBAH_SKILL:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Penugasan sudah masuk tahap {st.value} — skill tidak bisa diubah lagi karena "
+            "kertas kerja sudah disusun berdasarkan skill yang sekarang. Bila memang keliru, "
+            "buat penugasan baru.",
+        )
+
+    skill_baru = (payload.skill or "").strip().lower() or skill_dari(
+        payload.jenis_penugasan, payload.sub_penugasan
+    )
+    if not skill_baru:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Jenis dan Sub Penugasan belum lengkap, dan skill tidak disebut eksplisit.",
+        )
+    if not skill_exists(skill_baru):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Skill '{skill_baru}' tidak terdaftar. Tersedia: {', '.join(available_slugs())}.",
+        )
+
+    lama = p.skill
+    jejak = json.loads(p.skill_override) if p.skill_override else []
+    if not isinstance(jejak, list):
+        jejak = []
+    jejak.append({
+        "pada": datetime.utcnow().isoformat() + "Z",
+        "oleh": user.nama_lengkap,
+        "dari": lama,
+        "ke": skill_baru,
+        "jenis": payload.jenis_penugasan,
+        "sub": payload.sub_penugasan,
+        "alasan": (payload.alasan or "").strip(),
+    })
+    p.skill = skill_baru
+    if payload.jenis_penugasan:
+        p.jenis_penugasan = payload.jenis_penugasan
+    if payload.sub_penugasan:
+        p.sub_penugasan = payload.sub_penugasan
+    p.skill_override = json.dumps(jejak, ensure_ascii=False)
+    await db.flush()
+
+    append_audit_trail(Path(p.folder_path), {
+        "event": "skill_dikoreksi",
+        "oleh": user.nama_lengkap,
+        "dari": lama,
+        "ke": skill_baru,
+        "alasan": (payload.alasan or "").strip(),
+    })
+    return {
+        "ok": True,
+        "skill": skill_baru,
+        "skill_sebelumnya": lama,
+        "penjelasan": jelaskan(p.jenis_penugasan, p.sub_penugasan),
+        "riwayat": jejak,
+    }
 
 
 @router.get("/{penugasan_id}/sasaran-assignment")

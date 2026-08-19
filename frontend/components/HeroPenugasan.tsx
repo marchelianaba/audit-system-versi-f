@@ -172,8 +172,24 @@ export function HeroPenugasan({
             <div>{penugasan.tanggal_st || <span className="text-gray-400">—</span>}</div>
           </div>
           <div>
-            <div className="text-gray-400 uppercase text-[10px] mb-0.5">Jenis Pengawasan</div>
-            <div className="font-medium text-primary-dark">{skillLabel}</div>
+            <div className="text-gray-400 uppercase text-[10px] mb-0.5">Jenis Penugasan</div>
+            <div className="font-medium text-primary-dark">
+              {penugasan.jenis_penugasan || <span className="text-gray-400">—</span>}
+              {penugasan.sub_penugasan && (
+                <span className="font-normal text-gray-600"> · {penugasan.sub_penugasan}</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-400 uppercase text-[10px] mb-0.5">Skill</div>
+            <div className="font-medium text-primary-dark">
+              {skillLabel}
+              {penugasan.jenis_penugasan && penugasan.sub_penugasan && (
+                <span className="ml-1 text-[10px] font-normal text-green-700">
+                  ditentukan otomatis
+                </span>
+              )}
+            </div>
           </div>
           <div>
             <div className="text-gray-400 uppercase text-[10px] mb-0.5">Obyek</div>

@@ -1,7 +1,7 @@
 """Pydantic schemas untuk request/response API."""
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
 
 from app.models import DokumenStatus, PenugasanStatus, Role
 from app.skills_registry import available_slugs, skill_exists
@@ -46,18 +46,30 @@ class ChangePasswordRequest(BaseModel):
 
 # ===== Penugasan =====
 class PenugasanCreate(BaseModel):
+    """Buat penugasan.
+
+    Skill TIDAK lagi dipilih bebas: ia diturunkan dari `jenis_penugasan` +
+    `sub_penugasan` lewat matriks di `app/deteksi_skill.py`. `skill` tetap
+    diterima untuk (a) koreksi manual yang disengaja oleh Pengendali Teknis, dan
+    (b) kompatibilitas pemanggil lama/SIMWAS yang sudah menyebut skill langsung.
+    Salah satu harus ada — skill eksplisit, atau jenis+sub yang menghasilkannya.
+    """
+
     obyek: str
-    # Skill kini folder-driven (lihat skills_registry) — bukan enum tetap.
-    # Divalidasi terhadap registry supaya skill baru cukup ditambah sebagai folder.
-    skill: str
+    # Skill folder-driven (lihat skills_registry) — divalidasi ke registry.
+    skill: str | None = None
+    jenis_penugasan: str | None = None
+    sub_penugasan: str | None = None
     nomor_st: str | None = None
     tanggal_st: str | None = None
 
     @field_validator("skill", mode="before")
     @classmethod
-    def _skill_terdaftar(cls, v) -> str:
+    def _skill_terdaftar(cls, v):
         # mode="before": v bisa berupa enum Skill (internal) atau str (dari API).
         # Ambil .value bila enum supaya tidak jadi "Skill.REVIU_PENGADAAN".
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
         raw = getattr(v, "value", v)
         slug = str(raw).strip().lower()
         if not skill_exists(slug):
@@ -65,6 +77,22 @@ class PenugasanCreate(BaseModel):
                 f"skill '{raw}' tidak terdaftar. Tersedia: {', '.join(available_slugs())}"
             )
         return slug
+
+    @model_validator(mode="after")
+    def _turunkan_skill(self):
+        """Isi `skill` dari Jenis + Sub bila belum disebut eksplisit."""
+        if self.skill:
+            return self
+        from app.deteksi_skill import skill_dari
+
+        hasil = skill_dari(self.jenis_penugasan, self.sub_penugasan)
+        if not hasil:
+            raise ValueError(
+                "Jenis Penugasan dan Sub Penugasan wajib diisi (atau sebutkan skill "
+                "secara eksplisit) — skill ditentukan dari keduanya."
+            )
+        self.skill = hasil
+        return self
 
 
 class PenugasanOut(BaseModel):
@@ -74,6 +102,8 @@ class PenugasanOut(BaseModel):
     obyek: str
     # String bebas (DB menyimpan str) — bisa skill di luar 2 pipeline lama.
     skill: str
+    jenis_penugasan: str | None = None
+    sub_penugasan: str | None = None
     nomor_st: str | None
     tanggal_st: str | None
     status: PenugasanStatus

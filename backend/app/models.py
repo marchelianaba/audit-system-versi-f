@@ -82,6 +82,13 @@ class Penugasan(Base):
     skill: Mapped[Skill] = mapped_column(String(40))
     nomor_st: Mapped[str | None] = mapped_column(String(200), nullable=True)
     tanggal_st: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Identitas penugasan ala SIMWAS. Keduanya MENENTUKAN skill lewat matriks
+    # (app/deteksi_skill.py) — skill bukan lagi pilihan bebas Pengendali Teknis.
+    # Nullable demi migrasi aman: penugasan lama tak punya keduanya.
+    jenis_penugasan: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    sub_penugasan: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Jejak bila skill dikoreksi manual oleh PT (siapa, kapan, dari-ke apa).
+    skill_override: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[PenugasanStatus] = mapped_column(String(40), default=PenugasanStatus.DRAFT, index=True)
     # ISOLASI DATA: penugasan hanya terlihat oleh pengguna Inspektorat yang sama.
     # Diisi otomatis dari inspektorat pembuat (PT) saat create. Penegakan: app/tenancy.py.

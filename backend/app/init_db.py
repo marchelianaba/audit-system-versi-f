@@ -138,6 +138,10 @@ async def seed_auth(db) -> None:
         "ALTER TABLE penugasan ADD COLUMN IF NOT EXISTS inspektorat VARCHAR(4)",
         "CREATE INDEX IF NOT EXISTS ix_users_inspektorat ON users(inspektorat)",
         "CREATE INDEX IF NOT EXISTS ix_penugasan_inspektorat ON penugasan(inspektorat)",
+        # Jenis & Sub Penugasan (identitas ala SIMWAS) — penentu skill.
+        "ALTER TABLE penugasan ADD COLUMN IF NOT EXISTS jenis_penugasan VARCHAR(40)",
+        "ALTER TABLE penugasan ADD COLUMN IF NOT EXISTS sub_penugasan VARCHAR(80)",
+        "ALTER TABLE penugasan ADD COLUMN IF NOT EXISTS skill_override TEXT",
     ):
         try:
             await db.execute(text(ddl))
