@@ -703,6 +703,24 @@ async def stream_agent(
             "Hubungi pengembang bila penugasan ini masih perlu dilanjutkan.",
         )
 
+    # GERBANG KRITERIA (skill *-umum). Menempel pada AKSI, bukan pada mode yang
+    # dideklarasikan di sasaran: auditor boleh memilih mode "manual" lalu tetap
+    # membuka chat AI — bila gerbangnya disandarkan pada mode, jalur itu jadi
+    # pintu belakang memakai AI tanpa tolok ukur. Mode manual murni tak pernah
+    # menyentuh endpoint ini, jadi ia tidak ikut terbebani.
+    from app import daftar_kriteria as _dk
+    from app.skills_registry import is_skill_umum as _umum
+
+    if _umum(p.skill) and not _dk.ada_kriteria(Path(p.folder_path)):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Belum ada kriteria untuk penugasan ini. Skill '{p.skill}' tidak membawa "
+            "kriteria baku, jadi analisis AI tanpa tolok ukur tidak bisa "
+            "dipertanggungjawabkan. Isi dulu Daftar Kriteria di Tahapan 3 — unggah "
+            "berkasnya lalu sebutkan pasal yang dipakai, atau ketik kriterianya "
+            "langsung. Menyusun KKSA secara manual tidak memerlukan ini.",
+        )
+
     # Hard gate: Generate Context ([MODE:CONTEXT]) hanya boleh bila KT sudah isi
     # sasaran + AT sudah upload bahan (digest untuk RKA/PBJ, atau kriteria/objek
     # untuk skill criteria-driven).

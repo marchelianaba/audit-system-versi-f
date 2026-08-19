@@ -325,6 +325,11 @@ export default function DetailPenugasanPage() {
               skill={penugasan.skill}
               seedPrompt={seedPromptAT}
               openManual={caraDominan === 'MANUAL'}
+              gateReason={
+                kriteria.berlaku && !kriteria.adaKriteria
+                  ? 'isi dulu Daftar Kriteria di atas (unggah berkas + sebut pasalnya, atau ketik kriterianya). Menyusun KKSA manual tidak memerlukan ini.'
+                  : null
+              }
             />
             {/* v10.1 (transplant panel unduh v8): berkas KKP + LKE Excel bisa diunduh di sini,
                 berdampingan dengan tabel LKE terstruktur v10 (LkeRekapTable di TemuanReviewPanel). */}
@@ -1024,6 +1029,7 @@ function ChatTab({
   skill,
   seedPrompt,
   openManual,
+  gateReason,
 }: {
   penugasanId: number;
   role: string;
@@ -1031,6 +1037,11 @@ function ChatTab({
   seedPrompt?: string;
   /** Buka formulir KKSA manual langsung — dipakai saat AT memilih cara MANUAL. */
   openManual?: boolean;
+  /** Alasan tombol AI dikunci (mis. kriteria belum diisi). null = tidak dikunci.
+   *  Gerbang ini menempel pada AKSI, bukan pada mode sasaran — auditor boleh
+   *  memilih mode manual lalu tetap membuka chat, dan di titik itulah kriteria
+   *  tetap diminta. Backend menegakkan hal yang sama (422). */
+  gateReason?: string | null;
 }) {
   const [prompt, setPrompt] = useState(
     seedPrompt ??
@@ -1404,6 +1415,11 @@ function ChatTab({
           ({myRole}) hanya bisa <b>melihat</b> history, tidak bisa menjalankan.
         </div>
       )}
+      {gateReason && (
+        <div className="mb-2 p-3 rounded bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+          🔒 Analisis AI belum bisa dijalankan — {gateReason}
+        </div>
+      )}
       <textarea
         value={prompt}
         onChange={(e) => {
@@ -1413,14 +1429,20 @@ function ChatTab({
         }}
         className="w-full border border-gray-300 rounded-lg p-3 text-sm h-24"
         placeholder="Tulis perintah ke agen…"
-        disabled={running || !roleBolehJalan}
+        disabled={running || !roleBolehJalan || !!gateReason}
       />
       <div className="mt-2 flex gap-2">
         <button
           onClick={start}
-          disabled={running || !roleBolehJalan}
+          disabled={running || !roleBolehJalan || !!gateReason}
           className="px-4 py-2 rounded bg-primary text-white text-sm font-semibold hover:bg-primary-dark disabled:opacity-40"
-          title={roleBolehJalan ? undefined : 'Role Anda tidak berwenang menjalankan agen ini'}
+          title={
+            gateReason
+              ? gateReason
+              : roleBolehJalan
+              ? undefined
+              : 'Role Anda tidak berwenang menjalankan agen ini'
+          }
         >
           {running ? `⟳ Streaming (${elapsed}s)…` : '▶ Jalankan (streaming)'}
         </button>

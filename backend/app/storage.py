@@ -396,6 +396,21 @@ def context_readiness(
     # Pipeline → wajib digest. Criteria-driven → cukup dokumen input (atau digest bila ada).
     has_material = has_ingested if is_pipeline else (has_input_docs or has_ingested)
 
+    # Skill *-umum: WAJIB punya kriteria sebelum AI dijalankan. Skill umum tak
+    # punya kriteria baku bawaan (bandingkan reviu-rka-kl → PMK 107/2024,
+    # reviu-pengadaan → Perpres 16/2018), jadi analisis tanpa kriteria berarti
+    # menilai tanpa tolok ukur — hasilnya tak bisa dipertanggungjawabkan.
+    # Terpenuhi oleh unggahan MAUPUN kriteria yang diketik, supaya auditor yang
+    # ketentuannya tak berdokumen digital tidak ikut terkunci.
+    from app.skills_registry import is_skill_umum
+
+    perlu_kriteria = is_skill_umum(skill_norm)
+    has_kriteria = True
+    if perlu_kriteria:
+        from app import daftar_kriteria as _dk
+
+        has_kriteria = _dk.ada_kriteria(folder)
+
     reasons: list[str] = []
     if not has_sasaran:
         reasons.append("Ketua Tim belum mengisi sasaran")
@@ -404,11 +419,18 @@ def context_readiness(
             reasons.append("belum ada dokumen ter-digest (AT upload TOR/RAB atau KAK/HPS dulu)")
         else:
             reasons.append("belum ada dokumen kriteria/objek yang diunggah AT")
+    if not has_kriteria:
+        reasons.append(
+            "belum ada kriteria di Daftar Kriteria (unggah berkas + sebut pasalnya, "
+            "atau ketik kriterianya langsung)"
+        )
     return {
-        "ready": has_sasaran and has_material,
+        "ready": has_sasaran and has_material and has_kriteria,
         "has_sasaran": has_sasaran,
         "has_ingested": has_ingested,
         "has_input_docs": has_input_docs,
+        "perlu_kriteria": perlu_kriteria,
+        "has_kriteria": has_kriteria,
         "reason": "; ".join(reasons) if reasons else "Siap generate context",
     }
 
