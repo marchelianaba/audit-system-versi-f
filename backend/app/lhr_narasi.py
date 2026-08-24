@@ -442,12 +442,57 @@ def _blok_tujuan(ctx: dict, sasaran: list[dict], args: dict) -> list[tuple]:
     return blok
 
 
+def _kalimat_jangka_waktu(ctx: dict) -> str:
+    """Bab A.6 ditulis sebagai KALIMAT, bukan potongan tanggal telanjang.
+
+    Rentangnya berasal dari Surat Tugas (masuk ke context.md sebagai `Periode`).
+    """
+    periode = (ctx.get("periode") or "").strip().rstrip(".")
+    if not periode:
+        return "[DIISI AUDITOR — jangka waktu penugasan sesuai Surat Tugas]"
+    if periode[0].isdigit():
+        return f"Penugasan berlangsung pada tanggal {periode}."
+    return f"Penugasan berlangsung {periode}."
+
+
+# Susunan tim penugasan pengawasan — dicetak lengkap kelima perannya meski
+# sebagian belum terisi, supaya yang kurang TERLIHAT dan dilengkapi auditor,
+# bukan hilang diam-diam dari laporan.
+PERAN_TIM = [
+    ("Penanggung Jawab", ("penanggung jawab", "penanggungjawab")),
+    ("Pengendali Mutu", ("pengendali mutu",)),
+    ("Pengendali Teknis", ("pengendali teknis",)),
+    ("Ketua Tim", ("ketua",)),
+]
+
+
 def _blok_komposisi_tim(ctx: dict) -> list[tuple]:
-    tim = ctx.get("tim") or []
-    if not tim:
-        return [P("[DIISI AUDITOR — susunan tim reviu]", italic=True)]
-    baris = [[t.get("no", ""), t.get("nama", ""), t.get("nip", ""), t.get("jabatan", "")]
-             for t in tim]
+    tim = list(ctx.get("tim") or [])
+    KOSONG = "[DIISI AUDITOR]"
+
+    def cocok(orang: dict, kunci: tuple[str, ...]) -> bool:
+        jab = str(orang.get("jabatan", "")).lower()
+        return any(k in jab for k in kunci)
+
+    baris: list[list[str]] = []
+    sisa = tim[:]
+    for label, kunci in PERAN_TIM:
+        orang = next((o for o in sisa if cocok(o, kunci)), None)
+        if orang is not None:
+            sisa.remove(orang)
+            baris.append([str(len(baris) + 1), orang.get("nama") or KOSONG,
+                          orang.get("nip") or KOSONG, label])
+        else:
+            baris.append([str(len(baris) + 1), KOSONG, KOSONG, label])
+    # Sisanya = anggota tim. Bila tak ada seorang pun, tetap cetak satu baris
+    # supaya barisnya ada untuk dilengkapi.
+    if sisa:
+        for orang in sisa:
+            baris.append([str(len(baris) + 1), orang.get("nama") or KOSONG,
+                          orang.get("nip") or KOSONG, "Anggota Tim"])
+    else:
+        baris.append([str(len(baris) + 1), KOSONG, KOSONG, "Anggota Tim"])
+
     return [("tabel", ["No", "Nama", "NIP", "Kedudukan dalam Tim"], baris,
              {"lebar": [1.2, 5.6, 4.6, 4.1]})]
 
@@ -591,7 +636,7 @@ def render(folder: Path, args: dict) -> tuple[bool, str, Path | None]:
         "PENERIMA_LHP": (args.get("penerima") or ctx.get("penerima_lhp") or auditi),
         "TEMBUSAN_LIST": args.get("tembusan") or "[DIISI AUDITOR]",
         "LINK_SURVEI": args.get("link_survei") or "[DIISI AUDITOR]",
-        "A6_JANGKA_WAKTU": ctx.get("periode") or "[DIISI AUDITOR]",
+        "A6_JANGKA_WAKTU": _kalimat_jangka_waktu(ctx),
         "NOMOR_LHR": "[DIISI AUDITOR — dari SIMWAS]",
     })
 

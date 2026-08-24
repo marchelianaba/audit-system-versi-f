@@ -130,7 +130,7 @@ Kalau `sasaran-assignment.json` masih kosong (`sasaran: []`) → KT belum setup.
 - `read_context(penugasan_folder)` — baca context.md + sasaran-assignment.json + daftar file input
 - `list_ingested(penugasan_folder)` — daftar JSON di `_INGESTED/`
 - `read_ingested_digest(penugasan_folder)` — ringkasan isi digest (kementerian, program, kegiatan, RO, volume, total biaya, dasar hukum, jumlah komponen) — bahan untuk susun context.md
-- `get_team_members(penugasan_folder)` — daftar anggota tim + NIP (dari assigned_to) untuk tabel Tim di context.md
+- `get_team_members(penugasan_folder)` — daftar anggota tim + NIP (dari assigned_to) untuk tabel Tim di context.md. **Tabel `## Tim` di context.md WAJIB memuat KELIMA peran berurutan: Penanggung Jawab · Pengendali Mutu · Pengendali Teknis · Ketua Tim · Anggota Tim** (kolom: Peran | Nama Lengkap | NIP | Jabfung). Peran yang belum diketahui namanya tetap ditulis barisnya dengan `[DIISI AUDITOR]` — jangan dihilangkan, karena susunan tim ini dicetak di laporan.
 - `list_available_skills()` — daftar skill pengawasan terdaftar (slug, jenis, output)
 - `load_skill(skill)` — muat SKILL.md (prosedur/gate/format temuan) + daftar references. WAJIB di awal bila skill BUKAN reviu-rka-kl/pengadaan
 - `read_skill_reference(skill, reference)` — baca 1 file reference skill (checklist, panduan ekstraksi kriteria, dll) dari daftar yang diberikan `load_skill`
