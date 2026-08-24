@@ -85,6 +85,11 @@ def _terapkan_format(par, fmt: dict) -> None:
     }.get(fmt.get("align", "justify"), WD_ALIGN_PARAGRAPH.JUSTIFY)
     if fmt.get("indent"):
         par.paragraph_format.left_indent = Cm(fmt["indent"])
+    # Jorok gantung: baris ke-2 dst sejajar dengan teks SETELAH nomor, bukan
+    # menempel ke angkanya. Tanpa ini judul catatan yang panjang terlihat
+    # patah dan tidak rata.
+    if fmt.get("gantung"):
+        par.paragraph_format.first_line_indent = Cm(-fmt["gantung"])
     par.paragraph_format.space_after = Pt(fmt.get("space_after", 6))
     # Spasi 1,5 lewat XML — cara paling andal lintas versi python-docx, sama
     # dengan yang dipakai renderer V6 supaya tampilannya seragam.
@@ -106,24 +111,62 @@ def _buat_paragraf(doc: Document, teks: str, fmt: dict):
     return par
 
 
-def _buat_tabel(doc: Document, judul_kolom: list[str], baris: list[list[str]]):
+def _buat_tabel(doc: Document, judul_kolom: list[str], baris: list[list[str]],
+                opsi: dict | None = None):
+    """Tabel ber-garis. `opsi` boleh memuat:
+
+    - `lebar`  : list lebar kolom dalam cm. WAJIB diisi bila tidak ingin Word
+                 membagi kolom rata — pembagian rata membuat kolom "No"
+                 kelebaran sementara kolom nama terpotong ke dua baris.
+    - `gabung_akhir` : jumlah sel pertama pada BARIS TERAKHIR yang digabung
+                 (untuk baris TOTAL). Tanpa ini tulisan "TOTAL NOMINAL" nyempil
+                 di kolom Nama dan ikut terpotong.
+    - `rata_kanan`   : indeks kolom yang isinya dirata-kanankan (kolom nominal).
+    """
+    opsi = opsi or {}
+    lebar = opsi.get("lebar")
+    rata_kanan = set(opsi.get("rata_kanan") or [])
+
     tab = doc.add_table(rows=1, cols=len(judul_kolom))
     tab.style = "Table Grid"
     tab.alignment = WD_TABLE_ALIGNMENT.CENTER
-    for i, j in enumerate(judul_kolom):
-        sel = tab.rows[0].cells[i]
+    tab.autofit = False
+
+    def tulis(sel, teks, *, tebal=False, kanan=False):
         sel.text = ""
-        r = sel.paragraphs[0].add_run(j)
-        r.bold = True
+        par = sel.paragraphs[0]
+        if kanan:
+            par.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        r = par.add_run(str(teks))
+        r.bold = tebal
         r.font.name = FONT
         r.font.size = Pt(11)
-    for data in baris:
+
+    for i, j in enumerate(judul_kolom):
+        tulis(tab.rows[0].cells[i], j, tebal=True)
+
+    n_akhir = len(baris) - 1
+    for n, data in enumerate(baris):
         sel_baris = tab.add_row().cells
+        gabung = opsi.get("gabung_akhir") if n == n_akhir else None
+        if gabung and gabung >= 2:
+            digabung = sel_baris[0]
+            for k in range(1, gabung):
+                digabung = digabung.merge(sel_baris[k])
+            tulis(digabung, data[1] or data[0], tebal=True)
+            for i in range(gabung, len(data)):
+                tulis(sel_baris[i], data[i], tebal=True, kanan=i in rata_kanan)
+            continue
         for i, v in enumerate(data):
-            sel_baris[i].text = ""
-            r = sel_baris[i].paragraphs[0].add_run(str(v))
-            r.font.name = FONT
-            r.font.size = Pt(11)
+            tulis(sel_baris[i], v, kanan=i in rata_kanan)
+
+    if lebar:
+        # Lebar harus dipasang di SETIAP sel — Word mengabaikan lebar kolom
+        # bila sel-selnya sendiri tidak diberi ukuran.
+        for row in tab.rows:
+            for i, sel in enumerate(row.cells):
+                if i < len(lebar):
+                    sel.width = Cm(lebar[i])
     return tab
 
 
@@ -172,7 +215,8 @@ def tanam_blok(doc: Document, penanda: str, blok: list[tuple]) -> int:
                 baru = _buat_paragraf(doc, item[1], item[2])
                 el.addprevious(baru._element)
             elif item[0] == "tabel":
-                tab = _buat_tabel(doc, item[1], item[2])
+                tab = _buat_tabel(doc, item[1], item[2],
+                                  item[3] if len(item) > 3 else None)
                 el.addprevious(tab._element)
                 kosong = doc.add_paragraph()
                 el.addprevious(kosong._element)
@@ -310,7 +354,8 @@ def _blok_dasar(ctx: dict, args: dict) -> list[tuple]:
         )
     if not butir:
         return [P("[DIISI AUDITOR — dasar pelaksanaan reviu]", italic=True)]
-    return [P(f"{i}. {b}", indent=0.75) for i, b in enumerate(butir, 1)]
+    return [P(f"{i}. {b}", indent=1.3, gantung=0.55)
+            for i, b in enumerate(butir, 1)]
 
 
 def _blok_tujuan(ctx: dict, sasaran: list[dict], args: dict) -> list[tuple]:
@@ -322,14 +367,15 @@ def _blok_tujuan(ctx: dict, sasaran: list[dict], args: dict) -> list[tuple]:
                       + tujuan[0].lower() + tujuan[1:])
     else:
         tujuan_kal = tujuan
-    blok = [P(f"a. {tujuan_kal}", indent=0.75),
-            P("b. Sasaran dari dilaksanakannya reviu adalah untuk:", indent=0.75)]
+    blok = [P(f"a. {tujuan_kal}", indent=1.3, gantung=0.55),
+            P("b. Sasaran dari dilaksanakannya reviu adalah untuk:",
+              indent=1.3, gantung=0.55)]
     if sasaran:
         for i, s in enumerate(sasaran, 1):
             d = (s.get("deskripsi") or s.get("sasaran_id") or "").strip()
             if d and not d.endswith((".", ";")):
                 d += "."
-            blok.append(P(f"{i}. {d}", indent=1.5))
+            blok.append(P(f"{i}. {d}", indent=2.0, gantung=0.55))
     else:
         blok.append(P("1. [DIISI AUDITOR — sasaran reviu]", indent=1.5, italic=True))
     return blok
@@ -341,7 +387,8 @@ def _blok_komposisi_tim(ctx: dict) -> list[tuple]:
         return [P("[DIISI AUDITOR — susunan tim reviu]", italic=True)]
     baris = [[t.get("no", ""), t.get("nama", ""), t.get("nip", ""), t.get("jabatan", "")]
              for t in tim]
-    return [("tabel", ["No", "Nama", "NIP", "Kedudukan dalam Tim"], baris)]
+    return [("tabel", ["No", "Nama", "NIP", "Kedudukan dalam Tim"], baris,
+             {"lebar": [1.2, 5.6, 4.6, 4.1]})]
 
 
 def _blok_gambaran_umum(args: dict, komponen: list[dict]) -> list[tuple]:
@@ -362,7 +409,12 @@ def _blok_gambaran_umum(args: dict, komponen: list[dict]) -> list[tuple]:
         baris.append([str(i), k.get("nama", ""), str(k.get("jumlah", "")),
                       k.get("satuan", ""), _rupiah(nilai)])
     baris.append(["", "TOTAL NOMINAL", "", "", _rupiah(total)])
-    blok.append(("tabel", ["No", "Nama Pengadaan", "Jumlah", "Satuan", "Nominal"], baris))
+    blok.append((
+        "tabel",
+        ["No", "Nama Pengadaan", "Jumlah", "Satuan", "Nominal"],
+        baris,
+        {"lebar": [1.2, 6.0, 2.0, 2.3, 4.0], "gabung_akhir": 4, "rata_kanan": [4]},
+    ))
     return blok
 
 
@@ -378,7 +430,8 @@ def _blok_hasil_reviu(catatan: list[dict], args: dict, ada_catatan: bool) -> lis
     blok = [P(pembuka)]
     for i, c in enumerate(catatan, 1):
         judul = (c.get("judul") or "").strip() or f"Catatan {i}"
-        blok.append(P(f"{i}. {judul}", bold=True, align="left", indent=0.75, space_after=4))
+        blok.append(P(f"{i}. {judul}", bold=True, align="left",
+                      indent=1.3, gantung=0.55, space_after=4))
         for potongan in [x.strip() for x in (c.get("narasi") or "").split("\n") if x.strip()]:
             blok.append(P(potongan, indent=0.75))
         # Placeholder tanggapan HANYA untuk catatan (bukan pernyataan positif).
@@ -422,11 +475,11 @@ def _blok_rekomendasi(butir: list[dict]) -> list[tuple]:
         uraian = (b.get("uraian") or "").strip()
         if judul:
             blok.append(P(f"{i}. {judul}", bold=True, align="left",
-                          indent=0.75, space_after=4))
+                          indent=1.3, gantung=0.55, space_after=4))
             if uraian:
                 blok.append(P(uraian, indent=0.75))
         elif uraian:
-            blok.append(P(f"{i}. {uraian}", indent=0.75))
+            blok.append(P(f"{i}. {uraian}", indent=1.3, gantung=0.55))
     return blok
 
 
@@ -486,6 +539,8 @@ def render(folder: Path, args: dict) -> tuple[bool, str, Path | None]:
         "{{A1_LATAR_BELAKANG}}": _blok_latar_belakang(ctx, args),
         "{{A2_DASAR}}": _blok_dasar(ctx, args),
         "{{A3_TUJUAN}}": _blok_tujuan(ctx, sasaran, args),
+        # Isi sub-bab dibiarkan rata tepi kiri — mengikuti kebiasaan template
+        # sendiri (lihat bab "Standar Reviu" yang sudah tertulis di sana).
         "{{A4_RUANG_LINGKUP}}": [P(args.get("ruang_lingkup")
                                    or ctx.get("ruang_lingkup") or RUANG_LINGKUP_BAKU)],
         "{{A5_METODOLOGI}}": [P(args.get("metodologi") or METODOLOGI_BAKU)],
