@@ -257,7 +257,11 @@ def _parse_context(p: Path) -> dict[str, Any]:
         "nomor st": "nomor_st", "tanggal st": "tanggal_st",
         "dasar pengawasan": "dasar", "dasar penugasan": "dasar",
         "tahun anggaran": "tahun_anggaran",
+        # Agen menulis "- Periode: ..." (bukan "Periode Pelaksanaan"), jadi kunci
+        # pendeknya HARUS ikut dikenali. Pola panjang ditaruh lebih dulu agar
+        # tetap menang bila keduanya ada.
         "periode pelaksanaan": "periode", "jangka waktu": "periode",
+        "periode": "periode",
         "penerima lhp": "penerima_lhp",
     }
 
@@ -287,25 +291,65 @@ def _parse_context(p: Path) -> dict[str, Any]:
         if m:
             catat(m.group(1), m.group(2))
 
-    # Ringkasan Obyek — dipakai bab A.1 Latar Belakang bila agen tidak mengirim.
-    m = re.search(r"##\s*Ringkasan Obyek\s*\n+([\s\S]+?)(?=\n##|\Z)", teks, re.IGNORECASE)
-    if m:
-        out["ringkasan_obyek"] = m.group(1).strip()
+    # Ringkasan obyek. Nama headingnya berbeda-beda antar penulis context.md —
+    # scaffold memakai "Ringkasan Obyek", agen menulis "Gambaran Umum Obyek".
+    # Keduanya (dan variannya) harus dikenali, kalau tidak bab Latar Belakang
+    # terbit kosong tanpa ada yang sadar.
+    for pola in (r"##\s*Gambaran Umum Obyek\s*\n+([\s\S]+?)(?=\n##|\Z)",
+                 r"##\s*Ringkasan Obyek\s*\n+([\s\S]+?)(?=\n##|\Z)",
+                 r"##\s*Gambaran Umum\s*\n+([\s\S]+?)(?=\n##|\Z)"):
+        m = re.search(pola, teks, re.IGNORECASE)
+        if m and m.group(1).strip():
+            out["ringkasan_obyek"] = m.group(1).strip()
+            break
 
     # Tabel Tim — untuk bab A.7 Komposisi Tim.
+    #
+    # Dibaca menurut NAMA KOLOM, bukan posisi. Versi sebelumnya mensyaratkan
+    # kolom pertama berupa ANGKA, padahal agen menulis tabel berkolom
+    # "Peran | Nama Lengkap | NIP | Jabfung" — akibatnya seluruh tim terbaca
+    # nol dan bab Komposisi Tim terbit kosong.
     tim: list[dict] = []
+    judul_kolom: list[str] = []
     di_tim = False
     for baris in teks.splitlines():
-        if baris.strip().lower().startswith("## tim"):
+        b = baris.strip()
+        if b.lower().startswith("## tim"):
             di_tim = True
+            judul_kolom = []
             continue
-        if di_tim and baris.startswith("|"):
-            sel = [c.strip() for c in baris.split("|") if c.strip()]
-            if len(sel) >= 4 and sel[0].isdigit():
-                tim.append({"no": sel[0], "nama": sel[1], "nip": sel[2],
-                            "jabatan": sel[3]})
-        elif di_tim and baris.strip() and not baris.startswith("|"):
-            di_tim = False
+        if not di_tim:
+            continue
+        if not b.startswith("|"):
+            if b:  # baris bukan-tabel menutup bagian Tim
+                di_tim = False
+            continue
+        sel = [c.strip() for c in b.strip("|").split("|")]
+        if all(set(c) <= set("-: ") for c in sel):  # garis pemisah tabel
+            continue
+        if not judul_kolom:
+            judul_kolom = [c.lower() for c in sel]
+            continue
+        data = dict(zip(judul_kolom, sel))
+
+        def ambil(*kunci: str) -> str:
+            for k in kunci:
+                for kol, nilai in data.items():
+                    if k in kol:
+                        return nilai
+            return ""
+
+        nama = ambil("nama")
+        if not nama:
+            continue
+        tim.append({
+            "no": str(len(tim) + 1),
+            "nama": nama,
+            "nip": ambil("nip"),
+            # Kolom template = "Kedudukan dalam Tim": pakai Peran bila ada,
+            # kalau tidak baru jabatan fungsional.
+            "jabatan": ambil("peran", "kedudukan", "jabatan") or ambil("jabfung"),
+        })
     out["tim"] = tim
     return out
 
@@ -333,7 +377,24 @@ def _rupiah(v: Any) -> str:
 # ── penyusun blok per bab ────────────────────────────────────────────────────
 
 def _blok_latar_belakang(ctx: dict, args: dict) -> list[tuple]:
-    teks = (args.get("latar_belakang") or ctx.get("ringkasan_obyek") or "").strip()
+    """Bab A.1. Urutan sumber sengaja begini supaya TIDAK menduplikasi bab B.
+
+    Ringkasan obyek di context.md kerap menjadi bahan `gambaran_umum` juga;
+    bila keduanya diisi teks yang sama, laporan memuat paragraf kembar. Karena
+    itu ringkasan hanya dipakai bila BERBEDA dari gambaran umum, dan bila tidak
+    ada, disusun kalimat pengantar dari dasar penugasan.
+    """
+    teks = (args.get("latar_belakang") or "").strip()
+    if not teks:
+        ringkas = (ctx.get("ringkasan_obyek") or "").strip()
+        gu = (args.get("gambaran_umum") or "").strip()
+        if ringkas and ringkas[:120] != gu[:120]:
+            teks = ringkas
+    if not teks:
+        dasar = (args.get("dasar_permintaan") or ctx.get("dasar") or "").strip()
+        if dasar:
+            teks = (f"Menindaklanjuti {dasar.rstrip('.')}, Inspektorat II "
+                    f"melaksanakan {_judul_reviu(args)}.")
     return [P(teks or "[DIISI AUDITOR — latar belakang pelaksanaan reviu]",
               italic=not teks)]
 
