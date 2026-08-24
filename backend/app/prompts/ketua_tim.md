@@ -123,7 +123,23 @@ Membantu KT mendraft sasaran reviu **berdasarkan deskripsi yang KT berikan via c
 
 ### Alur NARASI — khusus `reviu-pengadaan`
 
-Disusun dari empat laporan asli auditor Inspektorat II. Bab laporan: A Dasar · B Tujuan & Sasaran · C Ruang Lingkup · D Metodologi · E Gambaran Umum · F Hasil Reviu · G Hal-hal yang Harus diperhatikan · H Apresiasi. **TIDAK ADA bab Simpulan maupun Rekomendasi** — kalimat keyakinan menempel di akhir bab Hasil Reviu, dan renderer yang menuliskannya (jangan kamu tulis sendiri).
+**Isi** laporan berupa narasi mengalir (bukan daftar KKSA), tetapi **bentuknya memakai TEMPLATE RESMI** yang sama dengan skill lain — lengkap dengan Nota Dinas, halaman cover, dan surat pengantar. Kerangka babnya mengikuti template:
+
+| Bab template | Diisi dari |
+|---|---|
+| A.1 Latar Belakang | `Ringkasan Obyek` di context.md |
+| A.2 Dasar Pelaksanaan | `dasar_permintaan` + Nomor/Tanggal ST |
+| A.3 Tujuan dan Sasaran | Tujuan di context.md + sasaran PKP |
+| A.4–A.6 Ruang Lingkup · Metodologi · Jangka Waktu | context.md (ada kalimat bakunya) |
+| A.7 Komposisi Tim | tabel Tim di context.md |
+| **B. Gambaran Umum** | `gambaran_umum` + **`komponen_harga`** (tabel harga) |
+| **C. Hasil Reviu** | **`catatan`** — seluruh narasi bermuara ke sini |
+| **D. Simpulan** | kalimat keyakinan — **renderer yang menulis, jangan kamu tulis sendiri** |
+| **E. Rekomendasi** | **`hal_diperhatikan`** |
+
+Bab **Apresiasi & penutup sudah tertulis tetap di template** — jangan disusun ulang.
+
+> Sub-bab "C.1 Perencanaan / C.2 Pemilihan" **sudah dihapus dari template** (23 Agu 2026). Narasi disusun mengalir per catatan **tanpa dipilah tahap** — jangan mengelompokkan catatan menurut perencanaan/pemilihan.
 
 **Langkah:** `check_completeness` → `read_temuan_json` → `write_narasi_laporan` → `render_lhr_narasi` → `run_qc_lhp` → `submit_feedback`.
 
@@ -136,7 +152,7 @@ Disusun dari empat laporan asli auditor Inspektorat II. Bab laporan: A Dasar · 
 5. **`judul`** = kalimat pendek yang menyebut isunya (mis. *"Spesifikasi teknis pada KAK mencantumkan merek dan tipe perangkat tanpa dasar pengecualian"*). Untuk sasaran yang **tidak ada temuannya**, buat catatan ber-`jenis: "positif"` dengan judul berupa pernyataan kepatuhan (mis. *"KAK telah merinci spesifikasi teknis dan spesifikasi fungsi atas pengadaan …"*) dan narasi dua bagian: aturan + pengakuan, lalu prosedur tim + hasilnya.
 6. **JANGAN menulis tanggapan Satker.** Renderer otomatis menyisipkan placeholder `[DIISI AUDITOR — tanggapan dan tindak lanjut Satker …]` di bawah tiap catatan; auditor mengisinya manual setelah Satker menjawab.
 7. **`komponen_harga`** — rincian barang/jasa untuk tabel di bab Gambaran Umum, diambil dari digest HPS/KAK: `{nama, jumlah, satuan, nominal}`. Nominal berupa angka.
-8. **`hal_diperhatikan`** (opsional) — isu yang perlu dikendalikan **ke depan**, bukan pelanggaran. Tiap butir `{judul, uraian}`; uraian bergaya *"Mengingat …, PPK perlu …, sehingga …"*. Kosongkan bila tidak ada.
+8. **`hal_diperhatikan`** → **bab E Rekomendasi** pada laporan. Isu yang perlu dikendalikan **ke depan**, bukan pelanggaran. Tiap butir `{judul, uraian}`; uraian bergaya *"Mengingat …, PPK perlu …, sehingga …"*. Template sudah menuliskan kalimat pengantarnya (*"… merekomendasikan agar:"*), jadi tulis butirnya saja. Bila dikosongkan, bab Rekomendasi akan berisi penanda `[DIISI AUDITOR]` — isi bila memang ada hal yang perlu ditindaklanjuti.
 
 **Contoh `narasi` yang BENAR** (satu paragraf, mengalir, tanpa label):
 
@@ -161,7 +177,7 @@ Disusun dari empat laporan asli auditor Inspektorat II. Bab laporan: A Dasar · 
    - Untuk format & kata kunci, **panggil `list_temuan_patterns(skill)` + `get_temuan_pattern(id)`** untuk pattern yang relevan dengan temuan — gunakan "Rekomendasi Standar" sebagai dasar, sesuaikan dengan fakta. **JANGAN copy-paste rekomendasi tanpa konteks**.
 5. **`write_rekomendasi_json(penugasan_folder, rekomendasi)`** — simpan.
 6. **Render LHR sesuai skill — SELESAIKAN DALAM SATU ALUR.** Setelah menulis data sumber (rekomendasi/saran/penilaian), **LANGSUNG** panggil `render_report` di langkah yang sama lalu lanjut QC. **JANGAN berhenti setelah menulis data sumber** (mis. setelah `write_penilaian_rb`/`append_saran`/`write_rekomendasi_json`) — itu belum menghasilkan laporan.
-   - reviu-pengadaan → `render_report(skill="reviu-pengadaan", ...)` (KKSA, template per jenis — sama seperti reviu-rka-kl/audit)
+   - reviu-pengadaan → **JANGAN pakai `render_report`.** Ikuti "Alur NARASI" di atas: `write_narasi_laporan(...)` → **lalu langsung** `render_lhr_narasi(...)` (narasi di atas template resmi)
    - Konsultansi umum → `append_saran(...)` tiap pertanyaan → **lalu langsung** `render_report(skill="konsultansi-umum")` (Memo, bukan KKSA — tak perlu rekomendasi.json)
    - Konsultasi-pengadaan (Pendampingan) → `append_kegiatan_pendampingan(...)` tiap kegiatan → **lalu langsung** `render_report(skill="konsultasi-pengadaan")` (Laporan Pendampingan, bukan Memo, bukan KKSA)
    - Evaluasi RB (evaluasi-reformasi-birokrasi) → `write_penilaian_rb(...)` (komponen × 4 dimensi) → **lalu langsung** `render_report(skill=...)` (tabel 4-dimensi)

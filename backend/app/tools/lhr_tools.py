@@ -406,6 +406,12 @@ def _finalize_jenis(folder: Path, skill: str) -> str | None:
 async def _render_kksa(folder: Path, args: dict) -> dict:
     """Render LHP paradigma KKSA via render_lhp.py V6 (placeholder {{...}}).
 
+    CATATAN reviu-pengadaan (23 Agu 2026): jalur ini TIDAK berlaku lagi untuk
+    skill tersebut. Sub-bab C.1/C.2 sudah digabung jadi `{{C_HASIL_REVIU}}` di
+    template, sedangkan V6 (read-only) masih mencari `{{C1_PERENCANAAN}}` dan
+    `{{C2_PEMILIHAN}}` — akibatnya bab Hasil Reviu akan terbit KOSONG tanpa
+    pesan galat. Lebih baik ditolak terang-terangan di sini.
+
     Overlay HITL WAJIB diterapkan di sini, sama seperti di render KKP.
     V6 `render_lhp.py` membaca `_KKP/temuan.json` langsung dari disk, sedangkan
     koreksi Anggota Tim hidup di DB (`TemuanReview.edited_fields`) dan status
@@ -414,6 +420,14 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     laporan — persis kelas cacat yang tidak boleh ada di produk audit.
     (Ditambahkan 9 Agu 2026; sebelumnya overlay hanya ada di jalur KKP.)
     """
+    if _slug(args.get("skill") or "") == "reviu-pengadaan":
+        return {"content": [{"type": "text", "text": (
+            "FAILED|reviu-pengadaan tidak memakai jalur KKSA. Laporannya berupa NARASI "
+            "di atas template resmi: panggil `write_narasi_laporan` lalu "
+            "`render_lhr_narasi`. (Sub-bab C.1/C.2 sudah digabung di template, sehingga "
+            "jalur KKSA akan menghasilkan bab Hasil Reviu yang kosong.)"
+        )}], "is_error": True}
+
     rekomendasi = folder / "_LHP" / "rekomendasi.json"
     if not rekomendasi.exists():
         return {"content": [{"type": "text", "text": "FAILED|rekomendasi.json belum ada"}], "is_error": True}
@@ -520,12 +534,16 @@ async def render_report(args: dict) -> dict:
 
 @tool(
     "write_narasi_laporan",
-    "KHUSUS reviu-pengadaan (gaya narasi). Tulis _LHP/narasi-laporan.json: narasi "
-    "TIAP catatan untuk bab Hasil Reviu, ditulis sebagai PARAGRAF MENGALIR tanpa "
-    "label Kondisi/Kriteria/Sebab/Akibat. Input: {catatan:[{judul, narasi, jenis}], "
-    "komponen_harga:[{nama,jumlah,satuan,nominal}], hal_diperhatikan:[{judul,uraian}]}. "
-    "jenis='catatan' (ada masalah) atau 'positif' (sasaran terpenuhi). "
-    "JANGAN menyalin mentah dari temuan.json — susun ulang jadi paragraf utuh.",
+    "KHUSUS reviu-pengadaan. Tulis _LHP/narasi-laporan.json — bahan laporan. TIAP "
+    "isian punya MUARA tetap di laporan: `catatan` -> bab C Hasil Reviu, "
+    "`komponen_harga` -> tabel di bab B Gambaran Umum, `hal_diperhatikan` -> bab E "
+    "Rekomendasi. Bab D Simpulan ditulis renderer sendiri (jangan kamu isi). "
+    "Input: {catatan:[{judul, narasi, jenis}], komponen_harga:[{nama,jumlah,satuan,"
+    "nominal}], hal_diperhatikan:[{judul,uraian}]}. `narasi` = PARAGRAF MENGALIR tanpa "
+    "label Kondisi/Kriteria/Sebab/Akibat. jenis='catatan' (ada masalah) atau 'positif' "
+    "(sasaran terpenuhi). Catatan TIDAK dipilah tahap perencanaan/pemilihan — semua "
+    "masuk satu bab C, urut sesuai kamu menuliskannya. JANGAN menyalin mentah dari "
+    "temuan.json — susun ulang jadi paragraf utuh.",
     {"penugasan_folder": str, "catatan": list, "komponen_harga": list,
      "hal_diperhatikan": list},
 )
@@ -582,12 +600,13 @@ async def write_narasi_laporan(args: dict) -> dict:
 
 @tool(
     "render_lhr_narasi",
-    "KHUSUS reviu-pengadaan (gaya narasi). Render LHR mengikuti format baku "
-    "Inspektorat II: A Dasar · B Tujuan & Sasaran · C Ruang Lingkup · D Metodologi · "
-    "E Gambaran Umum (+tabel harga) · F Hasil Reviu (narasi + placeholder tanggapan) · "
-    "G Hal-hal yang Harus diperhatikan · H Apresiasi. TANPA bab Simpulan/Rekomendasi. "
-    "Panggil SETELAH write_narasi_laporan. Keluaran: _LHP/LHR-NARASI-*.docx "
-    "(tidak menimpa laporan gaya lama).",
+    "KHUSUS reviu-pengadaan. Menuang narasi ke TEMPLATE RESMI (lengkap Nota Dinas, "
+    "halaman cover, surat pengantar) — isi tetap narasi mengalir, BUKAN daftar KKSA. "
+    "Bab: A Pendahuluan (latar belakang, dasar, tujuan & sasaran, ruang lingkup, "
+    "metodologi, jangka waktu, komposisi tim) · B Gambaran Umum + tabel harga · "
+    "C Hasil Reviu (narasi tiap catatan + placeholder tanggapan Satker) · D Simpulan "
+    "(kalimat keyakinan, ditulis renderer) · E Rekomendasi (dari hal_diperhatikan). "
+    "Panggil SETELAH write_narasi_laporan. Keluaran: _LHP/LHR-NARASI-*.docx.",
     {"penugasan_folder": str, "judul": str, "auditi": str, "dasar_permintaan": str,
      "gambaran_umum": str},
 )
