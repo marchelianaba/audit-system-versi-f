@@ -431,7 +431,7 @@ _STATUS_ASPEK = {
 }
 
 
-def _sambung_data_terpisah(folder: Path) -> Path | None:
+def _sambung_data_terpisah(folder: Path, sambung_aspek: bool = True) -> Path | None:
     """Titipkan penilaian aspek + rekomendasi ke `temuan.json` sebelum V6 baca.
 
     Return path backup; pemanggil WAJIB memanggil `_restore_temuan_from_backup`
@@ -450,7 +450,7 @@ def _sambung_data_terpisah(folder: Path) -> Path | None:
     # bab D — penilaian per aspek (termasuk yang SESUAI, supaya CAKUPAN reviu
     # terlihat di laporan, bukan cuma daftar masalah).
     p_aspek = folder / "_KKP" / "penilaian-aspek.json"
-    if not data.get("aspek_reviu") and p_aspek.is_file():
+    if sambung_aspek and not data.get("aspek_reviu") and p_aspek.is_file():
         try:
             rows = json.loads(p_aspek.read_text(encoding="utf-8")).get("aspek") or []
         except (OSError, ValueError):
@@ -497,6 +497,117 @@ def _sambung_data_terpisah(folder: Path) -> Path | None:
     temuan_path.write_text(json.dumps(data, ensure_ascii=False, indent=2),
                           encoding="utf-8")
     return backup
+
+
+# ── Bab D "Hasil Reviu" — narasi, bukan daftar centang ───────────────────────
+# V6 mencetak bab D sebagai baris "[OK]/[X] Nama Aspek: STATUS" — bentuk kertas
+# kerja, bukan bahasa laporan. Atas arahan auditor (26 Agu 2026) bab ini ditulis
+# sebagai kalimat, dan aspek yang SUDAH SESUAI tidak lagi dirinci satu per satu;
+# cakupan penuhnya tetap terekam di KKP (`_KKP/penilaian-aspek.json`).
+#
+# Aspek TIDAK_CUKUP_DATA TETAP dilaporkan: itu bukan aspek yang lolos, melainkan
+# aspek yang belum sempat diuji. Menyembunyikannya membuat pembaca menyangka
+# seluruh sisanya sudah beres.
+
+# Penanda milik V6 yang jadi titik sambung. Keduanya dibuang, diganti narasi.
+_JANGKAR_D = "[DIISI"                             # paragraf placeholder V6 (miring)
+_JANGKAR_D_ISI = "Status per aspek yang direviu"  # kalimat bawaan template
+
+
+def _nama_aspek(nama: str) -> str:
+    """Buang awalan kode sasaran ("S-01 | ") — itu penanda kertas kerja."""
+    return nama.split("|", 1)[1].strip() if "|" in nama else nama.strip()
+
+
+def _bersih_dasar(teks: str) -> str:
+    """Buang notasi kertas kerja "-> Temuan T-00x" dari akhir kalimat.
+
+    Titik penutupnya ikut terbuang bersama notasi itu, jadi dipulihkan di sini \u2014
+    kalimat laporan tidak boleh menggantung tanpa tanda baca.
+    """
+    bersih = re.sub(r"\s*(?:\u2192|->)\s*Temuan\s+[A-Z]-?\d+\.?\s*$", "",
+                    teks.strip()).strip()
+    if bersih and bersih[-1] not in ".?!":
+        bersih += "."
+    return bersih
+
+
+def _narasi_hasil_reviu(folder: Path) -> list[str] | None:
+    """Susun bab D sebagai paragraf. Return None bila tak ada penilaian aspek."""
+    src = folder / "_KKP" / "penilaian-aspek.json"
+    if not src.is_file():
+        return None
+    try:
+        rows = json.loads(src.read_text(encoding="utf-8")).get("aspek") or []
+    except (OSError, ValueError):
+        return None
+    rows = [r for r in rows if str(r.get("aspek") or "").strip()]
+    if not rows:
+        return None
+
+    def golongan(kode: str) -> list:
+        return [r for r in rows
+                if str(r.get("kesimpulan") or "").strip().upper() == kode]
+
+    sesuai = golongan("SESUAI")
+    tidak_sesuai = golongan("TIDAK_SESUAI")
+    kurang_data = golongan("TIDAK_CUKUP_DATA")
+    perlu = tidak_sesuai + kurang_data
+    n = len(rows)
+
+    if not perlu:
+        return [f"Reviu dilaksanakan atas {n} ({_terbilang(n)}) aspek. Seluruh aspek "
+                f"tersebut telah memenuhi ketentuan sehingga tidak terdapat hal yang "
+                f"perlu ditindaklanjuti."]
+
+    m = len(perlu)
+    pembuka = f"Reviu dilaksanakan atas {n} ({_terbilang(n)}) aspek. "
+    if sesuai:
+        k = len(sesuai)
+        pembuka += (f"Sebanyak {k} ({_terbilang(k)}) aspek telah memenuhi ketentuan "
+                    f"dan tidak memerlukan catatan lebih lanjut. Terhadap {m} "
+                    f"({_terbilang(m)}) aspek lainnya terdapat hal-hal yang perlu "
+                    f"mendapat perhatian, sebagaimana diuraikan berikut.")
+    else:
+        pembuka += ("Terhadap seluruh aspek tersebut terdapat hal-hal yang perlu "
+                    "mendapat perhatian, sebagaimana diuraikan berikut.")
+
+    paragraf = [pembuka]
+    for i, r in enumerate(tidak_sesuai, 1):
+        paragraf.append(f"{i}. {_nama_aspek(r['aspek'])} belum memenuhi ketentuan. "
+                        f"{_bersih_dasar(str(r.get('dasar') or ''))}".strip())
+    for j, r in enumerate(kurang_data, len(tidak_sesuai) + 1):
+        paragraf.append(f"{j}. {_nama_aspek(r['aspek'])} tidak dapat disimpulkan "
+                        f"karena keterbatasan data. "
+                        f"{_bersih_dasar(str(r.get('dasar') or ''))}".strip())
+    return paragraf
+
+
+def _tanam_narasi_hasil_reviu(docx_path: Path, paragraf: list[str]) -> bool:
+    """Ganti placeholder bab D milik V6 dengan paragraf narasi. Return berhasil?"""
+    from copy import deepcopy
+
+    from docx.text.paragraph import Paragraph
+
+    doc = Document(str(docx_path))
+    jangkar = donor = None
+    for par in doc.paragraphs:
+        teks = par.text.strip()
+        if teks.startswith(_JANGKAR_D_ISI):
+            donor = par          # kalimat bawaan template — dipakai contoh format
+        elif teks.startswith(_JANGKAR_D) and donor is not None and jangkar is None:
+            jangkar = par        # placeholder V6 tepat setelahnya
+    if jangkar is None or donor is None:
+        return False
+
+    for teks in paragraf:
+        baru = deepcopy(donor._p)
+        jangkar._p.addprevious(baru)
+        _set_para(Paragraph(baru, donor._parent), teks)
+    for par in (donor, jangkar):
+        par._p.getparent().remove(par._p)
+    doc.save(str(docx_path))
+    return True
 
 
 async def _render_kksa(folder: Path, args: dict) -> dict:
@@ -556,12 +667,17 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
         _restore_temuan_from_backup,
     )
 
+    narasi_d = _narasi_hasil_reviu(folder) if _slug(skill) == "reviu-umum" else None
+
     backup, stats = await _filter_temuan_by_review(folder)
     try:
         # Bersarang di dalam overlay HITL: backup penyambungan memotret keadaan
         # SESUDAH overlay, jadi pemulihannya harus lebih dulu (urutan terbalik)
         # supaya temuan.json kembali persis seperti semula.
-        sambung = _sambung_data_terpisah(folder)
+        # Bab D dinarasikan (reviu-umum): penilaian aspek TIDAK disambungkan ke
+        # temuan.json, supaya V6 tetap mencetak placeholder-nya sebagai jangkar
+        # yang akan diganti narasi setelah render.
+        sambung = _sambung_data_terpisah(folder, sambung_aspek=narasi_d is None)
         try:
             code, out, err = await run_v6_script(
                 "scripts/render_lhp.py",
@@ -584,6 +700,15 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
 
     if code != 0:
         return {"content": [{"type": "text", "text": f"FAILED|exit={code}|err={err[:400]}"}], "is_error": True}
+    # Bab D: ganti daftar centang V6 dengan narasi. Kegagalan JANGAN ditelan —
+    # tanpa penanaman ini bab D terbit sebagai placeholder "[DIISI ...]".
+    warn_d = ""
+    if narasi_d:
+        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
+                      key=lambda f: f.stat().st_mtime)
+        if not outs or not _tanam_narasi_hasil_reviu(outs[-1], narasi_d):
+            warn_d = "|WARNING:bab D gagal dinarasikan (penanda V6 tak ditemukan)"
+
     # A1: sesuaikan judul/kata + nama file per jenis (LHA/LHR/LHE/LP).
     final_name = _finalize_jenis(folder, skill)
     tail = f"|file={final_name}" if final_name else ""
@@ -596,7 +721,7 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
             f",ditolak:{stats['n_rejected']}"
             f",koreksi_auditor_diterapkan:{stats['n_edits_applied']}"
         )
-    return {"content": [{"type": "text", "text": f"OK|format=kksa|template={template.name}{tail}{hitl}|{out[:120]}"}]}
+    return {"content": [{"type": "text", "text": f"OK|format=kksa|template={template.name}{tail}{hitl}{warn_d}|{out[:120]}"}]}
 
 
 @tool(
