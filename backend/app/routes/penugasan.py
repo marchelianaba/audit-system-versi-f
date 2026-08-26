@@ -1528,14 +1528,19 @@ async def list_temuan_review(
             "ro": str(t.get("ro") or "").strip(),  # label RO (RKA-K/L multi-RO); kosong = non-RKA/RO tunggal
             # AI · AI_DARI_CATATAN · MANUAL — penentu apakah label "draf AI" pantas dipasang.
             "origin": str(t.get("origin") or "AI").strip() or "AI",
-            "kondisi": kondisi[:400],
-            "kriteria": kriteria[:400],
+            # JANGAN dipotong. Formulir edit di layar diisi dari nilai ini, lalu
+            # dikirim balik apa adanya saat disimpan — pemotongan di sini berarti
+            # isi temuan terpangkas PERMANEN begitu auditor menekan "Simpan edit",
+            # dan potongan itulah yang masuk KKP serta laporan. (Ditemukan 26 Agu
+            # 2026 dari layar antrean HITL yang teksnya tampak terpenggal.)
+            "kondisi": kondisi,
+            "kriteria": kriteria,
             # Asal kriteria — supaya Ketua Tim bisa membedakan kutipan yang
             # bersandar pada berkas nyata di penugasan ini dari kutipan yang
             # datang dari referensi bawaan skill. Tanpa ini keduanya tampak sama.
             "sumber_kriteria": t.get("sumber_kriteria") if isinstance(t.get("sumber_kriteria"), list) else [],
-            "sebab": sebab[:400],
-            "akibat": akibat[:400],
+            "sebab": sebab,
+            "akibat": akibat,
             "anggota": ((t.get("anggota_tim") or {}).get("nama_lengkap") or "") if isinstance(t.get("anggota_tim"), dict) else "",
             "dokumen_sumber": ds_efektif if isinstance(ds_efektif, list) else [],
             "dokumen_sumber_count": len(ds_efektif) if isinstance(ds_efektif, list) else 0,

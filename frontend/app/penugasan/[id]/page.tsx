@@ -3746,6 +3746,16 @@ function FormulirKksaManual({
   );
 }
 
+// Tinggi kotak sunting mengikuti panjang isinya. Sebelumnya dipatok 2–3 baris,
+// sehingga unsur temuan yang panjang (lazimnya 800–2.000 karakter) hanya tampak
+// sepotong — auditor menyunting sesuatu yang tidak bisa ia baca utuh.
+function barisTextarea(teks: string, min = 4, max = 24): number {
+  const perBaris = 90; // perkiraan karakter per baris pada lebar kotak
+  const dari = (teks || '').split('\n').reduce(
+    (n, b) => n + Math.max(1, Math.ceil(b.length / perBaris)), 0);
+  return Math.min(max, Math.max(min, dari + 1));
+}
+
 function TemuanReviewPanel({
   penugasanId,
   openManual,
@@ -4155,7 +4165,7 @@ function TemuanReviewPanel({
                             [t.id_temuan]: { ...p[t.id_temuan]!, kondisi: e.target.value },
                           }))
                         }
-                        rows={3}
+                        rows={barisTextarea(editing[t.id_temuan]!.kondisi, 5)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] font-mono"
                       />
                     </div>
@@ -4169,7 +4179,7 @@ function TemuanReviewPanel({
                             [t.id_temuan]: { ...p[t.id_temuan]!, kriteria: e.target.value },
                           }))
                         }
-                        rows={3}
+                        rows={barisTextarea(editing[t.id_temuan]!.kriteria, 5)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] font-mono"
                       />
                     </div>
@@ -4188,7 +4198,7 @@ function TemuanReviewPanel({
                             [t.id_temuan]: { ...p[t.id_temuan]!, sebab: e.target.value },
                           }))
                         }
-                        rows={2}
+                        rows={barisTextarea(editing[t.id_temuan]!.sebab, 3)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] font-mono"
                       />
                     </div>
@@ -4202,7 +4212,7 @@ function TemuanReviewPanel({
                             [t.id_temuan]: { ...p[t.id_temuan]!, akibat: e.target.value },
                           }))
                         }
-                        rows={2}
+                        rows={barisTextarea(editing[t.id_temuan]!.akibat, 3)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] font-mono"
                       />
                     </div>
