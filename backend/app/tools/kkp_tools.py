@@ -711,6 +711,43 @@ def _skill_from_assignment(folder: Path) -> str | None:
     return None
 
 
+def _pulihkan_berkas(target: Path, backup: Path | None) -> None:
+    """Pulihkan berkas dari backup lalu buang backup-nya. Selalu di `finally`."""
+    if backup is None or not backup.is_file():
+        return
+    try:
+        target.write_bytes(backup.read_bytes())
+    finally:
+        backup.unlink(missing_ok=True)
+
+
+def _sempitkan_aspek(folder: Path, nama_anggota: str) -> Path | None:
+    """Sisakan aspek milik `nama_anggota` saja sebelum V6 merender KKP-nya.
+
+    KKP adalah kertas kerja PERORANGAN — yang tercantum harus penilaian auditor
+    yang bersangkutan, bukan gabungan satu tim. V6 `render_kkp.py` membaca
+    `aspek` apa adanya dan tidak mengenal pemilik, jadi penyempitan dilakukan di
+    sini lalu berkasnya dipulihkan. Return path backup (None bila tak perlu).
+    """
+    src = folder / "_KKP" / "penilaian-aspek.json"
+    if not src.is_file():
+        return None
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    per = data.get("per_anggota") or {}
+    milik = per.get(str(nama_anggota).strip())
+    # Berkas lama (tanpa `per_anggota`) dibiarkan apa adanya — perilaku lama.
+    if not isinstance(milik, list) or len(per) < 2:
+        return None
+    backup = src.with_name("penilaian-aspek-backup.json")
+    backup.write_bytes(src.read_bytes())
+    data["aspek"] = milik
+    src.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return backup
+
+
 async def render_kkp_core(penugasan_folder: str, nama_anggota: str) -> tuple[bool, str]:
     """Inti render KKP — dipakai BERSAMA oleh tool agen dan endpoint HTTP.
 
@@ -781,16 +818,20 @@ async def render_kkp_core(penugasan_folder: str, nama_anggota: str) -> tuple[boo
             f"rejected={stats.get('n_rejected', 0)}{edit_str})"
         )
     try:
-        code, out, err = await run_v6_script(
-            "scripts/render_kkp.py",
-            [
-                "--penugasan",
-                str(penugasan_folder),
-                "--anggota",
-                nama_anggota,
-            ],
-            timeout=120,
-        )
+        sempit = _sempitkan_aspek(folder, nama_anggota)
+        try:
+            code, out, err = await run_v6_script(
+                "scripts/render_kkp.py",
+                [
+                    "--penugasan",
+                    str(penugasan_folder),
+                    "--anggota",
+                    nama_anggota,
+                ],
+                timeout=120,
+            )
+        finally:
+            _pulihkan_berkas(folder / "_KKP" / "penilaian-aspek.json", sempit)
     finally:
         _restore_temuan_from_backup(folder, backup)
     if code != 0:
@@ -1303,8 +1344,11 @@ async def build_context_md_template(args: dict) -> dict:
     "kebutuhan, spesifikasi teknis (jelas/terukur/tidak over-under-spec), 5 elemen justifikasi "
     "KAK, metodologi HPS, dll. Struktur: aspek=[{aspek, kesimpulan: SESUAI|TIDAK_SESUAI|"
     "TIDAK_CUKUP_DATA, dasar}]. dasar = 1 kalimat pembenaran (bukti dari dokumen). Ditampilkan "
-    "render_kkp sebagai tabel 'Kesimpulan Penilaian per Aspek'. Panggil SEBELUM render_kkp_docx.",
-    {"penugasan_folder": str, "aspek": list},
+    "render_kkp sebagai tabel 'Kesimpulan Penilaian per Aspek'. Panggil SEBELUM render_kkp_docx. "
+    "`nama_anggota` = NAMA KAMU SENDIRI (sama persis dengan yang dipakai render_kkp_docx). "
+    "Penilaian disimpan PER ANGGOTA: kamu hanya menimpa milikmu sendiri, punya rekan tim "
+    "tidak terhapus. KKP-mu memuat aspekmu saja; laporan memuat gabungan seluruh tim.",
+    {"penugasan_folder": str, "aspek": list, "nama_anggota": str},
 )
 async def write_penilaian_aspek(args: dict) -> dict:
     folder = Path(args["penugasan_folder"])
@@ -1324,13 +1368,42 @@ async def write_penilaian_aspek(args: dict) -> dict:
             "dasar": str(a.get("dasar", "")).strip(),
         })
     out = out_dir / "penilaian-aspek.json"
+
+    # GABUNG per anggota tim — JANGAN timpa seluruh berkas.
+    #
+    # Dulu berkas ini ditulis ulang utuh (`{"aspek": rows}`), sehingga Anggota
+    # Tim yang menyimpan belakangan MENGHAPUS penilaian rekannya. Terbukti
+    # terjadi di penugasan reviu-umum 26 Agu 2026: 5 aspek sasaran HPS milik
+    # satu AT lenyap saat AT lain menyimpan 9 aspek sasaran KAK — cakupan satu
+    # sasaran penuh hilang dari laporan tanpa pesan apa pun.
+    #
+    # `aspek` (gabungan) tetap dipertahankan supaya V6 render_kkp/laporan yang
+    # membacanya tidak perlu diubah; `per_anggota` yang jadi sumber kebenaran.
+    siapa = str(args.get("nama_anggota") or "").strip() or "(tanpa nama)"
+    per: dict[str, list] = {}
+    if out.is_file():
+        try:
+            lama = json.loads(out.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            lama = {}
+        # Berkas versi lama tidak menyimpan pemiliknya. Isinya TIDAK dibawa
+        # serta: di perilaku lama pun ia memang akan tertimpa, dan menebak
+        # pemiliknya berisiko menggandakan aspek milik orang lain.
+        per = {k: v for k, v in (lama.get("per_anggota") or {}).items()
+               if isinstance(v, list)}
+    per[siapa] = rows
+    gabungan = [a for daftar in per.values() for a in daftar]
+
     tmp = out.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps({"aspek": rows}, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps({"aspek": gabungan, "per_anggota": per},
+                              ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, out)
     n_ts = sum(1 for r in rows if r["kesimpulan"] == "TIDAK_SESUAI")
     n_tcd = sum(1 for r in rows if r["kesimpulan"] == "TIDAK_CUKUP_DATA")
     return {"content": [{"type": "text", "text":
-            f"OK|penilaian-aspek ditulis|n_aspek={len(rows)}|tidak_sesuai={n_ts}|tidak_cukup_data={n_tcd}"}]}
+            f"OK|penilaian-aspek ditulis|oleh={siapa}|n_aspek={len(rows)}"
+            f"|tidak_sesuai={n_ts}|tidak_cukup_data={n_tcd}"
+            f"|total_tim={len(gabungan)} dari {len(per)} anggota"}]}
 
 
 @tool(
