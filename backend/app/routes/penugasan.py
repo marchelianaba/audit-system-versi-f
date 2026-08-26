@@ -76,10 +76,13 @@ penetapan HPS."]
 
 ## Tim
 
-| Peran | Nama Lengkap | NIP | Jabfung |
-|-------|--------------|-----|---------|
-| Ketua Tim | {ketua_tim_name or "[DIISI]"} | [NIP] | [Auditor Madya/Muda/Pertama] |
-| Anggota | [DIISI] | [NIP] | [Auditor Pertama] |
+| No | Nama Lengkap | NIP | Peran | Jabfung |
+|----|--------------|-----|-------|---------|
+| 1 | [DIISI] | [NIP] | Penanggung Jawab | [DIISI] |
+| 2 | [DIISI] | [NIP] | Pengendali Mutu | [DIISI] |
+| 3 | [DIISI] | [NIP] | Pengendali Teknis | [DIISI] |
+| 4 | {ketua_tim_name or "[DIISI]"} | [NIP] | Ketua Tim | [Auditor Madya/Muda/Pertama] |
+| 5 | [DIISI] | [NIP] | Anggota Tim | [Auditor Pertama] |
 
 ## Ringkasan Obyek
 

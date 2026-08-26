@@ -711,6 +711,20 @@ def _skill_from_assignment(folder: Path) -> str | None:
     return None
 
 
+_ASAL_ASPEK = {
+    "LANGKAH_KERJA": "Langkah Kerja PKP",
+    "DAFTAR_KRITERIA": "Daftar Kriteria auditor",
+    "REFERENSI_SKILL": "Referensi skill",
+    "PERTIMBANGAN_AGEN": "Pertimbangan agen",
+}
+
+
+def _asal_aspek(nilai) -> str:
+    """Normalkan asal butir. Tak diisi -> TIDAK_DIREKAM (jujur, bukan ditebak)."""
+    k = str(nilai or "").strip().upper().replace(" ", "_").replace("-", "_")
+    return k if k in _ASAL_ASPEK else "TIDAK_DIREKAM"
+
+
 def _pulihkan_berkas(target: Path, backup: Path | None) -> None:
     """Pulihkan berkas dari backup lalu buang backup-nya. Selalu di `finally`."""
     if backup is None or not backup.is_file():
@@ -743,6 +757,14 @@ def _sempitkan_aspek(folder: Path, nama_anggota: str) -> Path | None:
         return None
     backup = src.with_name("penilaian-aspek-backup.json")
     backup.write_bytes(src.read_bytes())
+    # Asal butir diselipkan ke kolom Dasar: V6 render_kkp hanya mencetak
+    # aspek/kesimpulan/dasar dan tidak bisa diubah, sedangkan asal-usul ini
+    # justru yang membedakan aspek dari kriteria auditor vs tambahan agen.
+    milik = [dict(a) for a in milik]
+    for a in milik:
+        label = _ASAL_ASPEK.get(str(a.get("asal") or ""))
+        if label and label not in str(a.get("dasar") or ""):
+            a["dasar"] = f"{str(a.get('dasar') or '').strip()} (Asal aspek: {label})".strip()
     data["aspek"] = milik
     src.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return backup
@@ -1343,7 +1365,12 @@ async def build_context_md_template(args: dict) -> dict:
     "bukan hanya daftar temuan (exception-only). Contoh butir reviu-pengadaan: identifikasi "
     "kebutuhan, spesifikasi teknis (jelas/terukur/tidak over-under-spec), 5 elemen justifikasi "
     "KAK, metodologi HPS, dll. Struktur: aspek=[{aspek, kesimpulan: SESUAI|TIDAK_SESUAI|"
-    "TIDAK_CUKUP_DATA, dasar}]. dasar = 1 kalimat pembenaran (bukti dari dokumen). Ditampilkan "
+    "TIDAK_CUKUP_DATA, dasar, asal}]. dasar = 1 kalimat pembenaran (bukti dari dokumen). "
+    "`asal` (WAJIB) = dari mana butir ini berasal: LANGKAH_KERJA (langkah kerja di PKP) | "
+    "DAFTAR_KRITERIA (kriteria yang diunggah/diketik auditor) | REFERENSI_SKILL (checklist "
+    "bawaan skill) | PERTIMBANGAN_AGEN (kamu sendiri yang menilai butir ini perlu diuji). "
+    "JANGAN disamarkan: auditor berhak tahu mana aspek yang bersandar pada kriteria yang "
+    "ia tetapkan dan mana yang kamu tambahkan sendiri. Ditampilkan "
     "render_kkp sebagai tabel 'Kesimpulan Penilaian per Aspek'. Panggil SEBELUM render_kkp_docx. "
     "`nama_anggota` = NAMA KAMU SENDIRI (sama persis dengan yang dipakai render_kkp_docx). "
     "Penilaian disimpan PER ANGGOTA: kamu hanya menimpa milikmu sendiri, punya rekan tim "
@@ -1366,6 +1393,11 @@ async def write_penilaian_aspek(args: dict) -> dict:
             "aspek": str(a.get("aspek", "")).strip(),
             "kesimpulan": k,
             "dasar": str(a.get("dasar", "")).strip(),
+            # Asal-usul butir. Tanpa ini tidak ada cara membedakan aspek yang
+            # lahir dari kriteria auditor dari aspek yang ditambahkan agen
+            # sendiri - padahal di situlah bedanya reviu berbasis kriteria dan
+            # reviu berbasis pendapat AI. (Ditemukan 26 Agu 2026.)
+            "asal": _asal_aspek(a.get("asal")),
         })
     out = out_dir / "penilaian-aspek.json"
 

@@ -224,19 +224,31 @@ def build_context_md(
     if tim_anggota is None:
         tim_anggota = _load_tim(folder)
 
+    # Tabel Tim WAJIB: kolom pertama NOMOR, urutan No|Nama|NIP|Peran|Jabfung.
+    #
+    # Pembaca context.md di V6 (`render_lhp.parse_context`) hanya mengenali
+    # baris tabel yang punya >=5 kolom DAN kolom pertamanya angka, lalu
+    # memetakannya berurutan sebagai nama|nip|jabatan|jabfung. Dengan tabel
+    # 4 kolom berawalan `Peran`, seluruh tim terbaca NOL dan bab Komposisi
+    # Tim terbit kosong di semua skill selain reviu-pengadaan (yang punya
+    # pembaca sendiri). Ditemukan 26 Agu 2026. Nama kolom tetap eksplisit
+    # supaya pembaca berbasis-nama juga tetap jalan.
     tim_rows: list[str] = []
-    tim_rows.append("| Peran | Nama | NIP | Jabfung |")
-    tim_rows.append("|-------|------|-----|---------|")
+    tim_rows.append("| No | Nama Lengkap | NIP | Peran | Jabfung |")
+    tim_rows.append("|----|--------------|-----|-------|---------|")
     if tim_anggota:
-        for m in tim_anggota:
-            peran = m.get("peran") or m.get("role") or "Anggota"
+        for i, m in enumerate(tim_anggota, 1):
+            peran = m.get("peran") or m.get("role") or "Anggota Tim"
             nama = m.get("nama") or m.get("name") or "[DIISI AUDITOR]"
             nip = m.get("nip") or "[DIISI AUDITOR]"
             jabfung = m.get("jabfung") or m.get("jabatan") or "Auditor Pertama"
-            tim_rows.append(f"| {peran} | {nama} | {nip} | {jabfung} |")
+            tim_rows.append(f"| {i} | {nama} | {nip} | {peran} | {jabfung} |")
     else:
-        tim_rows.append("| Ketua Tim | [DIISI AUDITOR] | [DIISI AUDITOR] | Auditor Madya |")
-        tim_rows.append("| Anggota | [DIISI AUDITOR] | [DIISI AUDITOR] | Auditor Pertama |")
+        for i, peran in enumerate(("Penanggung Jawab", "Pengendali Mutu",
+                                   "Pengendali Teknis", "Ketua Tim",
+                                   "Anggota Tim"), 1):
+            tim_rows.append(f"| {i} | [DIISI AUDITOR] | [DIISI AUDITOR] | "
+                            f"{peran} | [DIISI AUDITOR] |")
     tim_md = "\n".join(tim_rows)
 
     # --- ringkasan obyek (paragraf deterministik dari digest) ---
@@ -328,7 +340,7 @@ def build_context_md(
 
 ## Periode & Anggaran
 
-- Periode: Januari–Desember {tahun_anggaran}
+- Periode Pelaksanaan: Januari–Desember {tahun_anggaran}  <!-- kunci ini yang dikenali perender; jangan disingkat jadi "Periode" -->
 - Tahun Anggaran: {tahun_anggaran}
 
 Tujuan: {tujuan_txt}

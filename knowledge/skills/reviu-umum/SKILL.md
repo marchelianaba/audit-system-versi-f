@@ -119,13 +119,15 @@ Status:
 
 ## Format Output Laporan (LHR)
 
-Ikuti `panduan-format-umum/PANDUAN.md`. Struktur isi:
+Ikuti `panduan-format-umum/PANDUAN.md`. **Bentuk penulisannya SAMA dengan `reviu-pengadaan`: narasi mengalir di atas template resmi, bukan daftar temuan KKSA.** Yang berbeda hanya SUBSTANSI yang diperiksa — itu mengikuti kriteria dan aspek skill ini. Laporan disusun Ketua Tim lewat `write_narasi_laporan` (`catatan` → bab D, `hal_diperhatikan` → bab E), bukan ditempel dari kertas kerja.
+
+Struktur isi:
 
 - **A. Dasar**
 - **B. Tujuan & Ruang Lingkup**
 - **C. Metodologi** — telaah dokumen, wawancara terbatas (jika ada)
-- **D. Hasil Reviu** — narasi per aspek dengan format catatan reviu (Judul → Kondisi → Kriteria → Sebab → Akibat → Rekomendasi)
-- **E. Catatan & Rekomendasi** — kompilasi catatan yang membutuhkan tindak lanjut (rekomendasi + penanggung jawab + tenggat)
+- **D. Hasil Reviu** — dibuka kalimat cakupan (berapa aspek diuji, berapa telah memenuhi ketentuan), lalu **narasi tiap catatan**: satu judul + **paragraf mengalir** yang merangkai kriteria → kondisi → akibat. **DILARANG menulis label "Kondisi:/Kriteria:/Sebab:/Akibat:"** dan dilarang menyalin mentah dari `temuan.json` — format berlabel itu milik kertas kerja, bukan laporan. Aspek yang sudah SESUAI tidak dirinci (cukup masuk hitungan di kalimat pembuka); aspek **TIDAK_CUKUP_DATA WAJIB tetap dinarasikan** — aspek yang belum teruji tidak boleh hilang dari laporan.
+- **E. Catatan & Rekomendasi** — **berisi rekomendasi, bukan pengulangan temuan.** Tiap butir: apa yang harus dilakukan + siapa pelaksananya + kapan, ditulis berpola sebab-akibat ("Mengingat …, PPK perlu memastikan …"), dan **menunjuk balik ke butir Hasil Reviu** yang ditindaklanjuti. Jangan menyalin judul temuan ke sini.
 - **F. Simpulan** — bahasa keyakinan terbatas
 - **G. Apresiasi**
 
