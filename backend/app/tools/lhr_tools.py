@@ -403,6 +403,102 @@ def _finalize_jenis(folder: Path, skill: str) -> str | None:
     return final.name
 
 
+# ── Data laporan yang V6 cari di tempat yang salah ───────────────────────────
+# Dua isi bab LHR tinggal di berkas TERPISAH, sedangkan `render_lhp.py` (mesin
+# baca-saja) mencarinya di dalam `_KKP/temuan.json`:
+#
+#   bab D "Hasil Reviu"           → V6 baca `temuan.json["aspek_reviu"]`,
+#                                   data aslinya di `_KKP/penilaian-aspek.json`
+#   bab E "Catatan & Rekomendasi" → V6 baca `temuan[i]["rekomendasi"]`,
+#                                   data aslinya di `_LHP/rekomendasi.json`
+#
+# Akibatnya bab D terbit sebagai penanda "[DIISI — ...]" dan bab E hanya memuat
+# JUDUL temuan tanpa satu pun rekomendasi — padahal keduanya sudah disusun
+# lengkap oleh Anggota Tim. (Ditemukan 26 Agu 2026 pada LHR penugasan 2:
+# 9 penilaian aspek dan 4 rekomendasi hilang dari laporan tanpa pesan galat.)
+#
+# Alih-alih menambal V6, keduanya dititipkan ke `temuan.json` sesaat sebelum
+# render lalu dipulihkan — pola yang sama dengan overlay HITL di atasnya.
+
+# Kosakata Anggota Tim → kosakata template LHR. `TIDAK_CUKUP_DATA` sengaja TIDAK
+# dipetakan ke "TERPENUHI DENGAN CATATAN": aspek yang datanya belum cukup bukan
+# aspek yang terpenuhi, dan laporan resmi tidak boleh memberi keyakinan atas
+# sesuatu yang belum diuji.
+_STATUS_ASPEK = {
+    "SESUAI": "TERPENUHI",
+    "TIDAK_SESUAI": "TIDAK TERPENUHI",
+    "TIDAK_CUKUP_DATA": "TIDAK DAPAT DISIMPULKAN",
+}
+
+
+def _sambung_data_terpisah(folder: Path) -> Path | None:
+    """Titipkan penilaian aspek + rekomendasi ke `temuan.json` sebelum V6 baca.
+
+    Return path backup; pemanggil WAJIB memanggil `_restore_temuan_from_backup`
+    di `finally`. Return None bila tak ada yang perlu disambung.
+    """
+    temuan_path = folder / "_KKP" / "temuan.json"
+    if not temuan_path.is_file():
+        return None
+    try:
+        data = json.loads(temuan_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None  # best-effort — jangan gagalkan render gara-gara penyambungan
+
+    berubah = False
+
+    # bab D — penilaian per aspek (termasuk yang SESUAI, supaya CAKUPAN reviu
+    # terlihat di laporan, bukan cuma daftar masalah).
+    p_aspek = folder / "_KKP" / "penilaian-aspek.json"
+    if not data.get("aspek_reviu") and p_aspek.is_file():
+        try:
+            rows = json.loads(p_aspek.read_text(encoding="utf-8")).get("aspek") or []
+        except (OSError, ValueError):
+            rows = []
+        aspek = []
+        for r in rows:
+            nama = str(r.get("aspek") or "").strip()
+            if not nama:
+                continue
+            asal = str(r.get("kesimpulan") or "").strip().upper()
+            aspek.append({
+                "nama": nama,
+                "status": _STATUS_ASPEK.get(asal, asal or "TIDAK DAPAT DISIMPULKAN"),
+                "keterangan": str(r.get("dasar") or "").strip(),
+            })
+        if aspek:
+            data["aspek_reviu"] = aspek
+            berubah = True
+
+    # bab E — rekomendasi per temuan (id_temuan → teks).
+    p_rek = folder / "_LHP" / "rekomendasi.json"
+    if p_rek.is_file():
+        try:
+            rek = json.loads(p_rek.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            rek = {}
+        if isinstance(rek, dict):
+            for t in data.get("temuan") or []:
+                if str(t.get("rekomendasi") or "").strip():
+                    continue  # sudah terisi — jangan ditimpa
+                nilai = rek.get(t.get("id_temuan"))
+                if isinstance(nilai, dict):
+                    nilai = nilai.get("rekomendasi")
+                nilai = str(nilai or "").strip()
+                if nilai:
+                    t["rekomendasi"] = nilai
+                    berubah = True
+
+    if not berubah:
+        return None
+
+    backup = folder / "_KKP" / "temuan-sambung-backup.json"
+    backup.write_bytes(temuan_path.read_bytes())
+    temuan_path.write_text(json.dumps(data, ensure_ascii=False, indent=2),
+                          encoding="utf-8")
+    return backup
+
+
 async def _render_kksa(folder: Path, args: dict) -> dict:
     """Render LHP paradigma KKSA via render_lhp.py V6 (placeholder {{...}}).
 
@@ -462,20 +558,27 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
 
     backup, stats = await _filter_temuan_by_review(folder)
     try:
-        code, out, err = await run_v6_script(
-            "scripts/render_lhp.py",
-            [
-                "--penugasan", str(folder),
-                "--rekomendasi-file", str(rekomendasi),
-                "--template", str(template),
-                "--judul", args["judul"],
-                "--auditi", args["auditi"],
-                "--dasar-permintaan", args["dasar_permintaan"],
-                "--gambaran-umum", args["gambaran_umum"],
-                "--tanggal-exit-meeting", args.get("tanggal_exit_meeting", "") or "",
-            ],
-            timeout=120,
-        )
+        # Bersarang di dalam overlay HITL: backup penyambungan memotret keadaan
+        # SESUDAH overlay, jadi pemulihannya harus lebih dulu (urutan terbalik)
+        # supaya temuan.json kembali persis seperti semula.
+        sambung = _sambung_data_terpisah(folder)
+        try:
+            code, out, err = await run_v6_script(
+                "scripts/render_lhp.py",
+                [
+                    "--penugasan", str(folder),
+                    "--rekomendasi-file", str(rekomendasi),
+                    "--template", str(template),
+                    "--judul", args["judul"],
+                    "--auditi", args["auditi"],
+                    "--dasar-permintaan", args["dasar_permintaan"],
+                    "--gambaran-umum", args["gambaran_umum"],
+                    "--tanggal-exit-meeting", args.get("tanggal_exit_meeting", "") or "",
+                ],
+                timeout=120,
+            )
+        finally:
+            _restore_temuan_from_backup(folder, sambung)
     finally:
         _restore_temuan_from_backup(folder, backup)
 
