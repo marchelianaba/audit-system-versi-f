@@ -57,6 +57,18 @@ RUANG_LINGKUP_BAKU = (
     "pengendalian intern dan pengujian atas respon permintaan keterangan yang "
     "biasanya dilaksanakan dalam suatu audit."
 )
+# Indentasi isi sub-bab bab A, mengikuti templat yang ditetapkan auditor
+# (0,64 cm — sama dengan paragraf "Standar Reviu" yang tertulis tetap di sana).
+#
+# Penanda blok seperti {{A1_...}} DIBUANG beserta paragrafnya oleh `tanam_blok`,
+# jadi format yang disetel di templat TIDAK terbawa — harus disetel di sini.
+# Penanda sederhana ({{A6_JANGKA_WAKTU}}) hanya diganti teksnya, formatnya ikut
+# templat, jadi tak perlu diatur di sini.
+#
+# A.2 Dasar Pelaksanaan dan A.3 Tujuan dan Sasaran SENGAJA rata tepi kiri —
+# begitu pula di templat; keduanya berupa daftar bernomor, bukan paragraf.
+INDEN_SUBBAB = 0.64
+
 METODOLOGI_BAKU = (
     "Reviu dilaksanakan dengan melakukan penelaahan atas seluruh data dukung "
     "serta melakukan konfirmasi dengan petugas/pejabat yang terkait."
@@ -396,7 +408,7 @@ def _blok_latar_belakang(ctx: dict, args: dict) -> list[tuple]:
             teks = (f"Menindaklanjuti {dasar.rstrip('.')}, Inspektorat II "
                     f"melaksanakan {_judul_reviu(args)}.")
     return [P(teks or "[DIISI AUDITOR — latar belakang pelaksanaan reviu]",
-              italic=not teks)]
+              italic=not teks, indent=INDEN_SUBBAB)]
 
 
 def _blok_dasar(ctx: dict, args: dict) -> list[tuple]:
@@ -645,11 +657,12 @@ def render(folder: Path, args: dict) -> tuple[bool, str, Path | None]:
         "{{A1_LATAR_BELAKANG}}": _blok_latar_belakang(ctx, args),
         "{{A2_DASAR}}": _blok_dasar(ctx, args),
         "{{A3_TUJUAN}}": _blok_tujuan(ctx, sasaran, args),
-        # Isi sub-bab dibiarkan rata tepi kiri — mengikuti kebiasaan template
-        # sendiri (lihat bab "Standar Reviu" yang sudah tertulis di sana).
+        # Isi sub-bab menjorok 0,64 cm mengikuti templat (lihat INDEN_SUBBAB).
         "{{A4_RUANG_LINGKUP}}": [P(args.get("ruang_lingkup")
-                                   or ctx.get("ruang_lingkup") or RUANG_LINGKUP_BAKU)],
-        "{{A5_METODOLOGI}}": [P(args.get("metodologi") or METODOLOGI_BAKU)],
+                                   or ctx.get("ruang_lingkup") or RUANG_LINGKUP_BAKU,
+                                   indent=INDEN_SUBBAB)],
+        "{{A5_METODOLOGI}}": [P(args.get("metodologi") or METODOLOGI_BAKU,
+                                indent=INDEN_SUBBAB)],
         "{{A7_KOMPOSISI_TIM}}": _blok_komposisi_tim(ctx),
         "{{B_GAMBARAN_UMUM}}": _blok_gambaran_umum(
             args, narasi_doc.get("komponen_harga") or []),
