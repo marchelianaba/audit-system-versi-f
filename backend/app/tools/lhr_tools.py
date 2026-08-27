@@ -521,6 +521,33 @@ _TANPA_KLASIFIKASI = (
 )
 
 
+def _betulkan_periode(docx_path: Path, folder: Path) -> bool:
+    """Isi bab Periode pada laporan pemantauan dari context.md.
+
+    V6 membacanya dari `ctx["periode_pelaksanaan"]`, padahal pembaca context.md
+    di V6 memetakan "Periode Pelaksanaan" ke kunci `periode` — jadi kunci yang
+    dicari itu TIDAK PERNAH ada dan bab Periode selalu terbit sebagai penanda
+    kosong. Diperbaiki di sini karena V6 baca-saja. (Ditemukan 27 Agu 2026 dari
+    laporan contoh pemantauan-umum.)
+    """
+    from app.lhr_narasi import _parse_context
+
+    periode = (_parse_context(folder / "context.md").get("periode") or "").strip()
+    if not periode:
+        return False
+    doc = Document(str(docx_path))
+    n = 0
+    for par in doc.paragraphs:
+        if par.text.strip().startswith("[DIISI — Periode"):
+            _set_para(par, periode)
+            for r in par.runs:
+                r.italic = False
+            n += 1
+    if n:
+        doc.save(str(docx_path))
+    return bool(n)
+
+
 def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str) -> list[str]:
     """Tambal dua cacat reviu-rka-kl. Return catatan peringatan."""
     peringatan: list[str] = []
@@ -651,6 +678,13 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     # Bab D: ganti daftar centang V6 dengan narasi. Kegagalan JANGAN ditelan —
     # tanpa penanaman ini bab D terbit sebagai placeholder "[DIISI ...]".
     warn_d = ""
+    if _slug(skill).startswith("pemantauan"):
+        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
+                      key=lambda f: f.stat().st_mtime)
+        if outs and not _betulkan_periode(outs[-1], folder):
+            warn_d += ("|WARNING:bab Periode tidak terisi — pastikan context.md memuat "
+                       "\"Periode Pelaksanaan\".")
+
     if _slug(skill) == "reviu-rka-kl":
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
                       key=lambda f: f.stat().st_mtime)
