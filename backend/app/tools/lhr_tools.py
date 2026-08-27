@@ -499,165 +499,8 @@ def _sambung_data_terpisah(folder: Path, sambung_aspek: bool = True) -> Path | N
     return backup
 
 
-# ── Bab D "Hasil Reviu" — narasi, bukan daftar centang ───────────────────────
-# V6 mencetak bab D sebagai baris "[OK]/[X] Nama Aspek: STATUS" — bentuk kertas
-# kerja, bukan bahasa laporan. Atas arahan auditor (26 Agu 2026) bab ini ditulis
-# sebagai kalimat, dan aspek yang SUDAH SESUAI tidak lagi dirinci satu per satu;
-# cakupan penuhnya tetap terekam di KKP (`_KKP/penilaian-aspek.json`).
-#
-# Aspek TIDAK_CUKUP_DATA TETAP dilaporkan: itu bukan aspek yang lolos, melainkan
-# aspek yang belum sempat diuji. Menyembunyikannya membuat pembaca menyangka
-# seluruh sisanya sudah beres.
-
-# Penanda milik V6 yang jadi titik sambung. Keduanya dibuang, diganti narasi.
-_JANGKAR_D = "[DIISI"                             # paragraf placeholder V6 (miring)
-_JANGKAR_D_ISI = "Status per aspek yang direviu"  # kalimat bawaan template
-_JANGKAR_E_ISI = "Berdasarkan hasil reviu, catatan dan rekomendasi"
-
-
-def _baca_narasi(folder: Path) -> dict | None:
-    """Baca _LHP/narasi-laporan.json — bahan laporan tulisan Ketua Tim."""
-    src = folder / "_LHP" / "narasi-laporan.json"
-    if not src.is_file():
-        return None
-    try:
-        d = json.loads(src.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return d if isinstance(d, dict) else None
-
-
-def _pembuka_cakupan(folder: Path) -> str | None:
-    """Kalimat pembuka bab Hasil Reviu: berapa aspek diuji, berapa sudah memenuhi.
-
-    Aspek yang SUDAH SESUAI tidak dirinci (arahan auditor), tapi JUMLAHNYA tetap
-    disebut supaya pembaca tahu seberapa luas cakupan reviunya — tanpa itu
-    laporan hanya tampak sebagai daftar masalah.
-    """
-    src = folder / "_KKP" / "penilaian-aspek.json"
-    if not src.is_file():
-        return None
-    try:
-        rows = json.loads(src.read_text(encoding="utf-8")).get("aspek") or []
-    except (OSError, ValueError):
-        return None
-    rows = [r for r in rows if str(r.get("aspek") or "").strip()]
-    if not rows:
-        return None
-    n = len(rows)
-    k = sum(1 for r in rows
-            if str(r.get("kesimpulan") or "").strip().upper() == "SESUAI")
-    m = n - k
-    if m == 0:
-        return (f"Reviu dilaksanakan atas {n} ({_terbilang(n)}) aspek dan seluruhnya "
-                f"telah memenuhi ketentuan.")
-    if k == 0:
-        return (f"Reviu dilaksanakan atas {n} ({_terbilang(n)}) aspek. Terhadap seluruh "
-                f"aspek tersebut terdapat hal-hal yang perlu mendapat perhatian, "
-                f"sebagaimana diuraikan berikut.")
-    return (f"Reviu dilaksanakan atas {n} ({_terbilang(n)}) aspek. Sebanyak {k} "
-            f"({_terbilang(k)}) aspek telah memenuhi ketentuan dan tidak memerlukan "
-            f"catatan lebih lanjut. Terhadap {m} ({_terbilang(m)}) aspek lainnya "
-            f"terdapat hal-hal yang perlu mendapat perhatian, sebagaimana diuraikan "
-            f"berikut.")
-
-
-def _jumlah_perlu_perhatian(folder: Path) -> int:
-    """Berapa aspek yang TIDAK berkesimpulan SESUAI — pembanding cakupan narasi."""
-    src = folder / "_KKP" / "penilaian-aspek.json"
-    if not src.is_file():
-        return 0
-    try:
-        rows = json.loads(src.read_text(encoding="utf-8")).get("aspek") or []
-    except (OSError, ValueError):
-        return 0
-    return sum(1 for r in rows if str(r.get("aspek") or "").strip()
-               and str(r.get("kesimpulan") or "").strip().upper() != "SESUAI")
-
-
-def _narasi_bab_d(folder: Path) -> list[str] | None:
-    """Bab Hasil Reviu = kalimat cakupan + narasi tiap catatan tulisan KT."""
-    catatan = (_baca_narasi(folder) or {}).get("catatan") or []
-    if not catatan:
-        return None
-    paragraf: list[str] = []
-    pembuka = _pembuka_cakupan(folder)
-    if pembuka:
-        paragraf.append(pembuka)
-    for i, c in enumerate(catatan, 1):
-        judul = str(c.get("judul") or "").strip() or f"Catatan {i}"
-        paragraf.append(f"{i}. {judul}")
-        for potongan in str(c.get("narasi") or "").split("\n"):
-            potongan = potongan.strip()
-            if potongan:
-                paragraf.append(potongan)
-    return paragraf
-
-
-def _narasi_bab_e(folder: Path) -> list[str] | None:
-    """Bab Rekomendasi = hal yang perlu ditindaklanjuti, menunjuk balik ke bab D."""
-    butir = (_baca_narasi(folder) or {}).get("hal_diperhatikan") or []
-    if not butir:
-        return None
-    paragraf: list[str] = []
-    for i, b in enumerate(butir, 1):
-        judul = str(b.get("judul") or "").strip()
-        uraian = str(b.get("uraian") or "").strip()
-        rujuk = str(b.get("butir_hasil") or "").strip()
-        # Rujukan ditulis dalam bahasa laporan, bukan notasi kertas kerja
-        # ("-> Temuan T-003"), supaya pembaca bisa menelusuri tanpa membuka KKP.
-        ekor = f" (Hasil Reviu butir {rujuk})" if rujuk else ""
-        if judul:
-            paragraf.append(f"{i}. {judul}{ekor}")
-            if uraian:
-                paragraf.append(uraian)
-        elif uraian:
-            paragraf.append(f"{i}. {uraian}{ekor}")
-    return paragraf
-
-
-def _ganti_isi_bab(doc, penanda_awal: str, penanda_akhir: str,
-                   paragraf: list[str], buang_pengantar: bool = False) -> bool:
-    """Ganti isi satu bab: dari kalimat pengantarnya sampai heading bab berikutnya.
-
-    Dipakai untuk menaruh narasi Ketua Tim ke bab yang sudah ter-render V6 —
-    tanpa mengubah V6 maupun templatenya. Paragraf pengantar dipakai sebagai
-    contoh format (donor), lalu ikut dibuang bila `buang_pengantar`.
-    """
-    from copy import deepcopy
-
-    from docx.text.paragraph import Paragraph
-
-    par = doc.paragraphs
-    i = next((k for k, x in enumerate(par)
-              if x.text.strip().startswith(penanda_awal)), None)
-    if i is None:
-        return False
-    j = next((k for k in range(i + 1, len(par))
-              if par[k].text.strip().startswith(penanda_akhir)), None)
-    if j is None:
-        return False
-
-    donor = par[i]
-    for teks in paragraf:
-        baru = deepcopy(donor._p)
-        par[j]._p.addprevious(baru)
-        salinan = Paragraph(baru, donor._parent)
-        _set_para(salinan, teks)
-        for r in salinan.runs:
-            r.italic = False
-    lama = list(range(i + 1, j)) + ([i] if buang_pengantar else [])
-    for k in lama:
-        par[k]._p.getparent().remove(par[k]._p)
-    return True
-
-
 # Kalimat metodologi baku untuk penugasan REVIU — sama dengan yang dipakai
 # perender narasi reviu-pengadaan, supaya kedua skill berbunyi sama.
-METODOLOGI_REVIU = ("Reviu dilaksanakan dengan melakukan penelaahan atas seluruh data "
-                    "dukung serta melakukan konfirmasi dengan petugas/pejabat yang "
-                    "terkait.")
-
 # Enam kalimat bawaan V6 untuk sub-bab C1–C6 reviu-rka-kl. Kalimat ini dicetak
 # saat tidak ada temuan yang ter-klasifikasi pada aspeknya — padahal TIDAK ADA
 # satu pun prompt/skill yang menyuruh agen mengisi field `area` yang jadi dasar
@@ -676,24 +519,6 @@ _TANPA_KLASIFIKASI = (
     "kertas kerja, sehingga status aspek ini tidak dapat disimpulkan dari laporan. "
     "Uraian seluruh temuan disajikan pada bab Rekomendasi."
 )
-
-
-def _betulkan_metodologi_reviu(docx_path: Path) -> bool:
-    """Bab Metodologi laporan REVIU jangan berbunyi "Pemantauan ...".
-
-    V6 memanggil pembangun metodologi milik PEMANTAUAN untuk jalur reviu-umum,
-    sehingga bab Metodologi menyatakan "Pemantauan tidak memberikan opini
-    keyakinan" — bertentangan dengan bab Tujuan tepat di atasnya yang menyatakan
-    memberikan keyakinan terbatas. Dua bab saling bertentangan dalam satu
-    laporan resmi. (Ditemukan 26 Agu 2026.)
-    """
-    doc = Document(str(docx_path))
-    for par in doc.paragraphs:
-        if par.text.strip().startswith("Pemantauan dilaksanakan melalui"):
-            _set_para(par, METODOLOGI_REVIU)
-            doc.save(str(docx_path))
-            return True
-    return False
 
 
 def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str) -> list[str]:
@@ -738,23 +563,6 @@ def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str) -> list[s
     return peringatan
 
 
-def _tanam_narasi_reviu_umum(docx_path: Path, bab_d: list[str],
-                             bab_e: list[str]) -> list[str]:
-    """Tanam narasi KT ke bab D dan E. Return daftar bab yang GAGAL ditanam."""
-    doc = Document(str(docx_path))
-    gagal = []
-    # Bab D: kalimat "Status per aspek ..." ikut dibuang — itu pengantar gaya
-    # daftar centang, tidak cocok lagi setelah babnya berupa narasi.
-    if not _ganti_isi_bab(doc, _JANGKAR_D_ISI, "E.", bab_d, buang_pengantar=True):
-        gagal.append("D")
-    # Bab E: pengantarnya DIPERTAHANKAN — kalimatnya sudah pas untuk rekomendasi.
-    if bab_e and not _ganti_isi_bab(doc, _JANGKAR_E_ISI, "F.", bab_e):
-        gagal.append("E")
-    if not gagal:
-        doc.save(str(docx_path))
-    return gagal
-
-
 async def _render_kksa(folder: Path, args: dict) -> dict:
     """Render LHP paradigma KKSA via render_lhp.py V6 (placeholder {{...}}).
 
@@ -772,12 +580,12 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     laporan — persis kelas cacat yang tidak boleh ada di produk audit.
     (Ditambahkan 9 Agu 2026; sebelumnya overlay hanya ada di jalur KKP.)
     """
-    if _slug(args.get("skill") or "") == "reviu-pengadaan":
+    if _slug(args.get("skill") or "") in ("reviu-pengadaan", "reviu-umum"):
         return {"content": [{"type": "text", "text": (
-            "FAILED|reviu-pengadaan tidak memakai jalur KKSA. Laporannya berupa NARASI "
-            "di atas template resmi: panggil `write_narasi_laporan` lalu "
-            "`render_lhr_narasi`. (Sub-bab C.1/C.2 sudah digabung di template, sehingga "
-            "jalur KKSA akan menghasilkan bab Hasil Reviu yang kosong.)"
+            "FAILED|skill ini tidak memakai jalur KKSA. Laporannya berupa NARASI di atas "
+            "template resmi: panggil `write_narasi_laporan` lalu `render_lhr_narasi"
+            "(skill=...)`. Templatenya tidak memuat penanda KKSA, sehingga jalur ini "
+            "akan menghasilkan bab Hasil Reviu yang kosong."
         )}], "is_error": True}
 
     rekomendasi = folder / "_LHP" / "rekomendasi.json"
@@ -812,32 +620,12 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
         _restore_temuan_from_backup,
     )
 
-    # reviu-umum: laporan WAJIB berupa narasi Ketua Tim, sama seperti
-    # reviu-pengadaan. Tanpa ini bab Hasil Reviu terbit sebagai penanda kosong
-    # dan bab Rekomendasi cuma menempelkan judul temuan dari kertas kerja —
-    # persis keluhan auditor 26 Agu 2026 ("isi rekomendasi jadi seperti bab
-    # hasil reviu, dan bab hasil reviu agak tidak jelas").
-    umum = _slug(skill) == "reviu-umum"
-    bab_d = _narasi_bab_d(folder) if umum else None
-    bab_e = _narasi_bab_e(folder) if umum else None
-    if umum and not bab_d:
-        return {"content": [{"type": "text", "text": (
-            "FAILED|narasi laporan belum ada. reviu-umum menyusun laporan seperti "
-            "reviu-pengadaan: panggil `write_narasi_laporan` lebih dulu — `catatan` "
-            "(paragraf mengalir kriteria->kondisi->akibat, TANPA label K/K/S/A) untuk "
-            "bab D Hasil Reviu, dan `hal_diperhatikan` untuk bab E Catatan dan "
-            "Rekomendasi. Jangan menyalin mentah dari temuan.json."
-        )}], "is_error": True}
-
     backup, stats = await _filter_temuan_by_review(folder)
     try:
         # Bersarang di dalam overlay HITL: backup penyambungan memotret keadaan
         # SESUDAH overlay, jadi pemulihannya harus lebih dulu (urutan terbalik)
         # supaya temuan.json kembali persis seperti semula.
-        # Bab D dinarasikan (reviu-umum): penilaian aspek TIDAK disambungkan ke
-        # temuan.json, supaya V6 tetap mencetak placeholder-nya sebagai jangkar
-        # yang akan diganti narasi setelah render.
-        sambung = _sambung_data_terpisah(folder, sambung_aspek=not umum)
+        sambung = _sambung_data_terpisah(folder)
         try:
             code, out, err = await run_v6_script(
                 "scripts/render_lhp.py",
@@ -863,36 +651,6 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     # Bab D: ganti daftar centang V6 dengan narasi. Kegagalan JANGAN ditelan —
     # tanpa penanaman ini bab D terbit sebagai placeholder "[DIISI ...]".
     warn_d = ""
-    if umum:
-        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
-                      key=lambda f: f.stat().st_mtime)
-        if not outs:
-            warn_d = "|WARNING:berkas hasil render tak ditemukan; bab D/E tak dinarasikan"
-        else:
-            gagal = _tanam_narasi_reviu_umum(outs[-1], bab_d, bab_e or [])
-            if gagal:
-                warn_d = (f"|WARNING:bab {'/'.join(gagal)} gagal dinarasikan "
-                          f"(penanda tak ditemukan)")
-        if not bab_e:
-            warn_d += ("|WARNING:hal_diperhatikan kosong — bab E Rekomendasi masih "
-                       "berisi tempelan judul temuan. Isi `hal_diperhatikan` lalu "
-                       "render ulang.")
-        # Cakupan: tiap aspek yang TIDAK berkesimpulan SESUAI harus punya
-        # catatannya di bab D. Kalau kurang, aspek yang belum teruji lenyap dari
-        # laporan tanpa jejak — jangan sampai lewat diam-diam.
-        perlu = _jumlah_perlu_perhatian(folder)
-        ada = len((_baca_narasi(folder) or {}).get("catatan") or [])
-        if perlu and ada < perlu:
-            warn_d += (f"|WARNING:bab D memuat {ada} catatan, padahal {perlu} aspek "
-                       f"tidak berkesimpulan SESUAI. Aspek yang TIDAK_CUKUP_DATA pun "
-                       f"wajib dinarasikan.")
-
-    if umum:
-        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
-                      key=lambda f: f.stat().st_mtime)
-        if outs and not _betulkan_metodologi_reviu(outs[-1]):
-            warn_d += "|WARNING:bab Metodologi tak ditemukan untuk dibetulkan"
-
     if _slug(skill) == "reviu-rka-kl":
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
                       key=lambda f: f.stat().st_mtime)
@@ -1031,15 +789,18 @@ async def write_narasi_laporan(args: dict) -> dict:
 
 @tool(
     "render_lhr_narasi",
-    "KHUSUS reviu-pengadaan. Menuang narasi ke TEMPLATE RESMI (lengkap Nota Dinas, "
-    "halaman cover, surat pengantar) — isi tetap narasi mengalir, BUKAN daftar KKSA. "
-    "Bab: A Pendahuluan (latar belakang, dasar, tujuan & sasaran, ruang lingkup, "
-    "metodologi, jangka waktu, komposisi tim) · B Gambaran Umum + tabel harga · "
+    "Untuk reviu-pengadaan DAN reviu-umum — WAJIB isi `skill`. Menuang narasi ke "
+    "TEMPLATE RESMI (lengkap Nota Dinas, halaman cover, surat pengantar) — isi tetap "
+    "narasi mengalir, BUKAN daftar KKSA. Kerangka bab kedua skill SAMA: A Pendahuluan "
+    "(latar belakang, dasar, tujuan & sasaran, ruang lingkup, metodologi, jangka waktu, "
+    "komposisi tim, standar reviu) · B Gambaran Umum (+ tabel harga bila ada) · "
     "C Hasil Reviu (narasi tiap catatan + placeholder tanggapan Satker) · D Simpulan "
-    "(kalimat keyakinan, ditulis renderer) · E Rekomendasi (dari hal_diperhatikan). "
-    "Panggil SETELAH write_narasi_laporan. Keluaran: _LHP/LHR-NARASI-*.docx.",
+    "(kalimat keyakinan, ditulis renderer — jangan kamu isi) · E Rekomendasi (dari "
+    "hal_diperhatikan). Pada reviu-umum, bab C dibuka otomatis dengan kalimat cakupan "
+    "aspek dari _KKP/penilaian-aspek.json. Panggil SETELAH write_narasi_laporan. "
+    "Keluaran: _LHP/LHR-NARASI-*.docx.",
     {"penugasan_folder": str, "judul": str, "auditi": str, "dasar_permintaan": str,
-     "gambaran_umum": str},
+     "gambaran_umum": str, "skill": str},
 )
 async def render_lhr_narasi(args: dict) -> dict:
     from app.lhr_narasi import render as _render_narasi
@@ -1061,7 +822,24 @@ async def render_lhr_narasi(args: dict) -> dict:
                 "is_error": True}
     if not ok:
         return {"content": [{"type": "text", "text": f"FAILED|{pesan}"}], "is_error": True}
-    return {"content": [{"type": "text", "text": f"OK|format=narasi|{pesan}|file={out.name}"}]}
+
+    # Cakupan: tiap aspek yang TIDAK berkesimpulan SESUAI harus punya catatannya
+    # di bab Hasil Reviu. Kalau kurang, aspek yang belum teruji lenyap dari
+    # laporan tanpa jejak — jangan sampai lewat diam-diam.
+    warn = ""
+    if _slug(args.get("skill") or "") == "reviu-umum":
+        from app.lhr_narasi import _aspek
+
+        perlu = sum(1 for r in _aspek(folder)
+                    if str(r.get("kesimpulan") or "").strip().upper() != "SESUAI")
+        narasi = safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}
+        ada = len(narasi.get("catatan") or [])
+        if perlu and ada < perlu:
+            warn = (f"|WARNING:bab Hasil Reviu memuat {ada} catatan, padahal {perlu} "
+                    f"aspek tidak berkesimpulan SESUAI. Aspek TIDAK_CUKUP_DATA pun "
+                    f"wajib dinarasikan.")
+    return {"content": [{"type": "text",
+                         "text": f"OK|format=narasi|{pesan}|file={out.name}{warn}"}]}
 
 
 @tool(

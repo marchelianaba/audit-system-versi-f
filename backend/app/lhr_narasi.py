@@ -1,4 +1,4 @@
-"""Penyusun LHR gaya NARASI untuk `reviu-pengadaan` — dituang ke TEMPLATE resmi.
+"""Penyusun LHR gaya NARASI untuk `reviu-pengadaan` dan `reviu-umum`.
 
 ISI vs BENTUK
 -------------
@@ -31,7 +31,9 @@ Pemetaan isi lama → bab template:
     hal_diperhatikan    → E. Rekomendasi   (dulu bab G tersendiri)
     apresiasi + penutup → sudah ada tetap di template
 
-Khusus skill `reviu-pengadaan`. Skill lain tidak terpengaruh.
+Dipakai skill `reviu-pengadaan` dan `reviu-umum` (26 Agu 2026: kerangka bab
+reviu-umum diseragamkan dengan reviu-pengadaan atas arahan auditor, sehingga
+keduanya memakai penyusun yang sama). Skill lain tidak terpengaruh.
 """
 from __future__ import annotations
 
@@ -511,7 +513,7 @@ def _blok_komposisi_tim(ctx: dict) -> list[tuple]:
 
 def _blok_gambaran_umum(args: dict, komponen: list[dict]) -> list[tuple]:
     gu = (args.get("gambaran_umum") or "").strip()
-    blok = [P(gu or "[DIISI AUDITOR — gambaran umum pengadaan]", italic=not gu)]
+    blok = [P(gu or "[DIISI AUDITOR — gambaran umum objek reviu]", italic=not gu)]
     if not komponen:
         return blok
     blok.append(P("Berikut adalah rincian komponen dan harga yang akan diadakan:",
@@ -536,16 +538,54 @@ def _blok_gambaran_umum(args: dict, komponen: list[dict]) -> list[tuple]:
     return blok
 
 
-def _blok_hasil_reviu(catatan: list[dict], args: dict, ada_catatan: bool) -> list[tuple]:
-    obyek = args.get("judul") or "pengadaan"
+def _pembuka_cakupan(folder: Path) -> str | None:
+    """Kalimat pembuka bab Hasil Reviu untuk reviu-umum: berapa aspek diuji.
+
+    Aspek yang SUDAH SESUAI tidak dirinci (arahan auditor), tapi JUMLAHNYA tetap
+    disebut supaya pembaca tahu seberapa luas cakupan reviunya — tanpa itu
+    laporan hanya tampak sebagai daftar masalah.
+    """
+    rows = _aspek(folder)
+    if not rows:
+        return None
+    n = len(rows)
+    k = sum(1 for r in rows
+            if str(r.get("kesimpulan") or "").strip().upper() == "SESUAI")
+    m = n - k
+    if m == 0:
+        return (f"Reviu dilaksanakan atas {n} ({_terbilang_sederhana(n)}) aspek dan "
+                f"seluruhnya telah memenuhi ketentuan.")
+    if k == 0:
+        return (f"Reviu dilaksanakan atas {n} ({_terbilang_sederhana(n)}) aspek. "
+                f"Terhadap seluruh aspek tersebut terdapat hal-hal yang perlu "
+                f"mendapat perhatian, sebagaimana diuraikan berikut.")
+    return (f"Reviu dilaksanakan atas {n} ({_terbilang_sederhana(n)}) aspek. Sebanyak "
+            f"{k} ({_terbilang_sederhana(k)}) aspek telah memenuhi ketentuan dan tidak "
+            f"memerlukan catatan lebih lanjut. Terhadap {m} "
+            f"({_terbilang_sederhana(m)}) aspek lainnya terdapat hal-hal yang perlu "
+            f"mendapat perhatian, sebagaimana diuraikan berikut.")
+
+
+def _aspek(folder: Path) -> list[dict]:
+    """Penilaian aspek tim (gabungan semua Anggota Tim)."""
+    d = _baca_json(folder / "_KKP" / "penilaian-aspek.json")
+    rows = d.get("aspek") if isinstance(d, dict) else None
+    return [r for r in (rows or []) if str(r.get("aspek") or "").strip()]
+
+
+def _blok_hasil_reviu(catatan: list[dict], args: dict, ada_catatan: bool,
+                      pembuka: str | None = None) -> list[tuple]:
+    obyek = args.get("judul") or "objek reviu"
     if ada_catatan:
         n = sum(1 for c in catatan if c.get("jenis", "catatan") == "catatan")
-        pembuka = (f"Berdasarkan hasil reviu atas {obyek}, tim reviu menyampaikan "
+        kalimat = (f"Berdasarkan hasil reviu atas {obyek}, tim reviu menyampaikan "
                    f"{n} ({_terbilang_sederhana(n)}) catatan sebagaimana diuraikan "
                    f"berikut ini.")
     else:
-        pembuka = f"Berdasarkan hasil reviu atas {obyek}, didapatkan hasil sebagai berikut:"
-    blok = [P(pembuka)]
+        kalimat = f"Berdasarkan hasil reviu atas {obyek}, didapatkan hasil sebagai berikut:"
+    # reviu-umum membuka bab ini dengan cakupan aspek lebih dulu (arahan auditor).
+    blok = [P(pembuka)] if pembuka else []
+    blok.append(P(kalimat))
     for i, c in enumerate(catatan, 1):
         judul = (c.get("judul") or "").strip() or f"Catatan {i}"
         blok.append(P(f"{i}. {judul}", bold=True, align="left",
@@ -558,22 +598,20 @@ def _blok_hasil_reviu(catatan: list[dict], args: dict, ada_catatan: bool) -> lis
     return blok
 
 
-def _blok_simpulan(args: dict, ada_catatan: bool) -> list[tuple]:
+def _blok_simpulan(args: dict, ada_catatan: bool, kriteria: str = "") -> list[tuple]:
     """Kalimat keyakinan — bentuk 'kecuali' bila masih ada catatan terbuka.
 
     Tanpa bentuk 'kecuali', laporan bisa menyatakan semuanya sesuai sambil
     mendaftar beberapa catatan di bab sebelumnya.
     """
-    obyek = args.get("judul") or "pengadaan"
-    if ada_catatan:
-        kal = (f"Berdasarkan hasil reviu, tidak terdapat hal-hal yang membuat kami "
-               f"yakin bahwa {obyek} tidak sesuai dengan ketentuan pengadaan "
-               f"barang/jasa, kecuali hal-hal yang kami ungkapkan pada bagian "
-               f"Hasil Reviu di atas.")
-    else:
-        kal = (f"Berdasarkan hasil reviu, tidak terdapat hal-hal yang membuat kami "
-               f"yakin bahwa {obyek} tidak sesuai dengan ketentuan pengadaan "
-               f"barang/jasa.")
+    obyek = args.get("judul") or "objek reviu"
+    # Frasa kriteria menyesuaikan jenis penugasan: menyebut "ketentuan pengadaan
+    # barang/jasa" pada reviu non-pengadaan akan salah menyatakan tolok ukurnya.
+    tolok = kriteria or "ketentuan pengadaan barang/jasa"
+    kecuali = (", kecuali hal-hal yang kami ungkapkan pada bagian Hasil Reviu di atas"
+               if ada_catatan else "")
+    kal = (f"Berdasarkan hasil reviu, tidak terdapat hal-hal yang membuat kami "
+           f"yakin bahwa {obyek} tidak sesuai dengan {tolok}{kecuali}.")
     return [P(kal)]
 
 
@@ -591,13 +629,19 @@ def _blok_rekomendasi(butir: list[dict]) -> list[tuple]:
     for i, b in enumerate(butir, 1):
         judul = (b.get("judul") or "").strip()
         uraian = (b.get("uraian") or "").strip()
+        # Rujukan balik ke butir bab Hasil Reviu, ditulis dalam bahasa laporan —
+        # bukan notasi kertas kerja ("-> Temuan T-003"). Tanpa ini pembaca tidak
+        # bisa mengaitkan rekomendasi dengan uraian temuannya; keluhan auditor
+        # 26 Agu 2026: "nomor 1 2 mana KKSA-nya?".
+        rujuk = str(b.get("butir_hasil") or "").strip()
+        ekor = f" (Hasil Reviu butir {rujuk})" if rujuk else ""
         if judul:
-            blok.append(P(f"{i}. {judul}", bold=True, align="left",
+            blok.append(P(f"{i}. {judul}{ekor}", bold=True, align="left",
                           indent=1.3, gantung=0.55, space_after=4))
             if uraian:
                 blok.append(P(uraian, indent=0.75))
         elif uraian:
-            blok.append(P(f"{i}. {uraian}", indent=1.3, gantung=0.55))
+            blok.append(P(f"{i}. {uraian}{ekor}", indent=1.3, gantung=0.55))
     return blok
 
 
@@ -619,11 +663,18 @@ def render(folder: Path, args: dict) -> tuple[bool, str, Path | None]:
                 "write_narasi_laporan lebih dulu untuk menyusun narasi tiap catatan.",
                 None)
 
-    template = resolve_lhp_template("reviu-pengadaan")
+    # Skill menentukan templat DAN bunyi kalimat baku. Keduanya memakai kerangka
+    # bab yang sama (A Pendahuluan 1-8, B, C, D, E) sejak 26 Agu 2026.
+    skill = str(args.get("skill") or "reviu-pengadaan").strip().lower()
+    if skill not in ("reviu-pengadaan", "reviu-umum"):
+        skill = "reviu-pengadaan"
+    umum = skill == "reviu-umum"
+
+    template = resolve_lhp_template(skill)
     if template is None or not Path(template).is_file():
         return (False,
-                "template LHP reviu-pengadaan tidak ditemukan — periksa "
-                "APP_TEMPLATES_PATH/_skeleton-lhp/template-lhp-reviu-pengadaan.docx",
+                f"template LHP {skill} tidak ditemukan — periksa "
+                f"APP_TEMPLATES_PATH/_skeleton-lhp/template-lhp-{skill}.docx",
                 None)
 
     ada_catatan = any(c.get("jenis", "catatan") == "catatan" for c in catatan)
@@ -666,8 +717,12 @@ def render(folder: Path, args: dict) -> tuple[bool, str, Path | None]:
         "{{A7_KOMPOSISI_TIM}}": _blok_komposisi_tim(ctx),
         "{{B_GAMBARAN_UMUM}}": _blok_gambaran_umum(
             args, narasi_doc.get("komponen_harga") or []),
-        "{{C_HASIL_REVIU}}": _blok_hasil_reviu(catatan, args, ada_catatan),
-        "{{D_SIMPULAN}}": _blok_simpulan(args, ada_catatan),
+        "{{C_HASIL_REVIU}}": _blok_hasil_reviu(
+            catatan, args, ada_catatan,
+            _pembuka_cakupan(folder) if umum else None),
+        "{{D_SIMPULAN}}": _blok_simpulan(
+            args, ada_catatan,
+            "kriteria yang ditetapkan dalam penugasan reviu ini" if umum else ""),
         "{{E_REKOMENDASI}}": _blok_rekomendasi(narasi_doc.get("hal_diperhatikan") or []),
     }
     tak_ketemu = [k for k, blok in tanam.items() if tanam_blok(doc, k, blok) == 0]

@@ -117,7 +117,7 @@ Membantu KT mendraft sasaran reviu **berdasarkan deskripsi yang KT berikan via c
 - **Konsultasi/Pendampingan Pengadaan** (`konsultasi-pengadaan`) → **alur PENDAMPINGAN** (BUKAN Memo, BUKAN KKSA). Outputnya **Laporan Hasil Pendampingan** = log kegiatan yang sudah diselesaikan. Alur: dari dokumen objek + catatan rapat / notulen di `00-input/`, identifikasi tiap KEGIATAN pendampingan yang dilakukan tim (rapat klarifikasi KAK, reviu HPS sebelum tender, klarifikasi tender ulang, dst) → untuk tiap kegiatan, `append_kegiatan_pendampingan(folder, {tanggal, jenis_kegiatan, deskripsi, hasil, pihak_didampingi?, dokumen_pendukung?[], tindak_lanjut?})` → **langsung** `render_report(skill="konsultasi-pengadaan", judul, auditi, dasar_permintaan)` → `run_qc_lhp`. SELESAI. JANGAN pakai `append_saran` (itu untuk konsultansi-umum, format beda).
 - **Evaluasi RB** (`evaluasi-reformasi-birokrasi`) → **alur RB 4-DIMENSI** (BUKAN KKSA). **JANGAN** panggil `check_completeness`/`read_temuan_json`/`write_rekomendasi_json`. Alur: baca dokumen objek (Rencana Aksi + realisasi) via `read_pdf_page` → nilai SETIAP komponen pada 4 dimensi (Ketepatan Pelaksanaan / Ketercapaian Output / Kualitas Pelaksanaan / Kesesuaian Waktu) "Sesuai"/"Tidak Sesuai" + analisis dampak + AoI → `write_penilaian_rb({komponen:[...], analisis_dampak, aoi})` → **langsung** `render_report(skill, judul, ...)` → `run_qc_lhp`. SELESAI — jangan lanjut ke langkah 1–8.
 - **`reviu-pengadaan`** → **alur NARASI** (baru, 13 Agu 2026). Format laporan reviu pengadaan Inspektorat II **bukan** daftar temuan KKSA. Ikuti "Alur NARASI" di bawah, JANGAN pakai `write_rekomendasi_json`/`render_report`.
-- **`reviu-umum`** → **alur NARASI juga** (26 Agu 2026), tetapi rendernya tetap `render_report`. Tulis `write_narasi_laporan` LEBIH DULU (`catatan` → bab D Hasil Reviu, `hal_diperhatikan` → bab E Catatan dan Rekomendasi), baru `write_rekomendasi_json` + `render_report`. **Render akan DITOLAK bila narasi belum ada** — itu disengaja: tanpa narasi, bab Hasil Reviu terbit kosong dan bab Rekomendasi cuma menempelkan judul temuan.
+- **`reviu-umum`** → **alur NARASI yang SAMA PERSIS dengan reviu-pengadaan** (27 Agu 2026): kerangka bab, penanda, dan cara menulisnya identik. `write_narasi_laporan` → `render_lhr_narasi(skill="reviu-umum")`. **JANGAN pakai `render_report`** — akan ditolak. Yang berbeda hanya SUBSTANSI yang diperiksa (aspek & kriteria skill reviu-umum), bukan bentuk laporannya.
 - **Skill KKSA lain** (reviu-rka-kl, audit-*, evaluasi-sakip/spip/MR, pemantauan-*, dll) → lanjut langkah 1–8 di bawah (temuan → rekomendasi → render).
 
 ---
@@ -144,23 +144,23 @@ Bab **Apresiasi & penutup sudah tertulis tetap di template** — jangan disusun 
 
 **Langkah (reviu-pengadaan):** `check_completeness` → `read_temuan_json` → `write_narasi_laporan` → `render_lhr_narasi` → `run_qc_lhp` → `submit_feedback`.
 
-#### Muara narasi untuk `reviu-umum`
+#### Tambahan untuk `reviu-umum`
 
-Templatenya berbeda, jadi muaranya juga berbeda — tapi **cara menulisnya persis sama**:
+Kerangka babnya **sama persis** dengan tabel di atas — A.1–A.7, B, C Hasil Reviu,
+D Simpulan, E Rekomendasi. Tiga perbedaan kecil:
 
-| Bab template reviu-umum | Diisi dari |
-|---|---|
-| **D. Hasil Reviu** | **`catatan`** — kalimat cakupan aspek ditulis renderer, lalu narasimu |
-| **E. Catatan dan Rekomendasi** | **`hal_diperhatikan`** |
-| F. Simpulan | renderer yang menulis — jangan kamu isi |
-
-`komponen_harga` TIDAK dipakai di reviu-umum (tak ada tabel harga di templatenya).
+- Bab **C Hasil Reviu** dibuka otomatis oleh renderer dengan kalimat cakupan aspek
+  (berapa aspek diuji, berapa telah memenuhi ketentuan) dari `_KKP/penilaian-aspek.json`
+  — **jangan kamu tulis sendiri**, langsung mulai dari catatan pertama.
+- **`komponen_harga` tidak dipakai** (tak ada tabel harga pada penugasan non-pengadaan).
+- Kalimat **D Simpulan** menyebut "kriteria yang ditetapkan dalam penugasan reviu ini",
+  bukan "ketentuan pengadaan barang/jasa".
 
 **`catatan` WAJIB memuat SEMUA aspek yang tidak berkesimpulan SESUAI** — baik yang `TIDAK_SESUAI` (ada temuannya di `temuan.json`) MAUPUN yang `TIDAK_CUKUP_DATA` (belum dapat disimpulkan). Aspek yang belum teruji **tidak boleh hilang** dari laporan: pembaca akan menyangka seluruh sisanya sudah beres. Cek jumlahnya lewat `_KKP/penilaian-aspek.json`; render akan memberi WARNING bila catatanmu lebih sedikit.
 
 **`hal_diperhatikan` berisi REKOMENDASI, bukan pengulangan temuan.** Isi `butir_hasil` = nomor urut catatan di bab D yang ditindaklanjuti, supaya bab E menunjuk balik ke uraiannya. Tanpa itu pembaca tidak bisa mengaitkan rekomendasi dengan temuannya.
 
-**Langkah (reviu-umum):** `check_completeness` → `read_temuan_json` → `write_narasi_laporan` → `write_rekomendasi_json` → `render_report(skill="reviu-umum", ...)` → `run_qc_lhp` → `submit_feedback`.
+**Langkah (reviu-umum):** `check_completeness` → `read_temuan_json` → `write_narasi_laporan` → `render_lhr_narasi(skill="reviu-umum", ...)` → `run_qc_lhp` → `submit_feedback`.
 
 **Menyusun `catatan` untuk `write_narasi_laporan` — ini inti pekerjaanmu:**
 
@@ -196,11 +196,11 @@ Templatenya berbeda, jadi muaranya juga berbeda — tapi **cara menulisnya persi
    - Untuk format & kata kunci, **panggil `list_temuan_patterns(skill)` + `get_temuan_pattern(id)`** untuk pattern yang relevan dengan temuan — gunakan "Rekomendasi Standar" sebagai dasar, sesuaikan dengan fakta. **JANGAN copy-paste rekomendasi tanpa konteks**.
 5. **`write_rekomendasi_json(penugasan_folder, rekomendasi)`** — simpan.
 6. **Render LHR sesuai skill — SELESAIKAN DALAM SATU ALUR.** Setelah menulis data sumber (rekomendasi/saran/penilaian), **LANGSUNG** panggil `render_report` di langkah yang sama lalu lanjut QC. **JANGAN berhenti setelah menulis data sumber** (mis. setelah `write_penilaian_rb`/`append_saran`/`write_rekomendasi_json`) — itu belum menghasilkan laporan.
-   - reviu-pengadaan → **JANGAN pakai `render_report`.** Ikuti "Alur NARASI" di atas: `write_narasi_laporan(...)` → **lalu langsung** `render_lhr_narasi(...)` (narasi di atas template resmi)
+   - reviu-pengadaan → **JANGAN pakai `render_report`.** Ikuti "Alur NARASI" di atas: `write_narasi_laporan(...)` → **lalu langsung** `render_lhr_narasi(skill="reviu-pengadaan", ...)` (narasi di atas template resmi)
    - Konsultansi umum → `append_saran(...)` tiap pertanyaan → **lalu langsung** `render_report(skill="konsultansi-umum")` (Memo, bukan KKSA — tak perlu rekomendasi.json)
    - Konsultasi-pengadaan (Pendampingan) → `append_kegiatan_pendampingan(...)` tiap kegiatan → **lalu langsung** `render_report(skill="konsultasi-pengadaan")` (Laporan Pendampingan, bukan Memo, bukan KKSA)
    - Evaluasi RB (evaluasi-reformasi-birokrasi) → `write_penilaian_rb(...)` (komponen × 4 dimensi) → **lalu langsung** `render_report(skill=...)` (tabel 4-dimensi)
-   - reviu-umum → `write_narasi_laporan(...)` DULU (lihat "Muara narasi untuk reviu-umum" di atas) → `write_rekomendasi_json(...)` → **lalu** `render_report(skill="reviu-umum", ...)`. Render ditolak bila narasi belum ditulis.
+   - reviu-umum → **JANGAN pakai `render_report`.** Sama seperti reviu-pengadaan: `write_narasi_laporan(...)` → **lalu langsung** `render_lhr_narasi(skill="reviu-umum", ...)`.
    - SEMUA skill lain (reviu-rka-kl, audit-kinerja, evaluasi-sakip/spip/MR, pemantauan-*, dll) → `write_rekomendasi_json(...)` → **lalu langsung** `render_report(penugasan_folder, skill, judul, auditi, dasar_permintaan, gambaran_umum, tanggal_exit_meeting)` (KKSA, template per jenis)
    - **(Opsional) Perjelas dengan tabel/diagram — SETELAH render berhasil.** Bila menambah kejelasan bagi pimpinan, sisipkan `append_lampiran_tabel` (mis. rekap temuan per aspek, matriks nilai/severity, status TL) dan/atau `append_lampiran_diagram` (mis. `bar` jumlah temuan per severity/aspek, `pie` komposisi status TL). **Data WAJIB dari `temuan.json`/TLHP — jangan dikarang**; pakai secukupnya (informatif, bukan dekoratif). Lewati untuk Memo Konsultansi.
 7. **Bila render FAILED:** lapor exit code + stderr ke pengguna. **STOP.** Jangan render manual.
