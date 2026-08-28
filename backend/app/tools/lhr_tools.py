@@ -501,34 +501,6 @@ def _sambung_data_terpisah(folder: Path, sambung_aspek: bool = True) -> Path | N
 
 # Kalimat metodologi baku untuk penugasan REVIU — sama dengan yang dipakai
 # perender narasi reviu-pengadaan, supaya kedua skill berbunyi sama.
-# Enam kalimat bawaan V6 untuk sub-bab C1–C6 reviu-rka-kl. Kalimat ini dicetak
-# saat tidak ada temuan yang ter-klasifikasi pada aspeknya — padahal TIDAK ADA
-# satu pun prompt/skill yang menyuruh agen mengisi field `area` yang jadi dasar
-# klasifikasi itu. Akibatnya laporan menyatakan "telah sesuai" walaupun ada
-# temuan: bukan bab kosong, melainkan KEYAKINAN PALSU. (Ditemukan 26 Agu 2026.)
-_KLAIM_RKAKL = (
-    "Kelayakan SBM/SBK telah sesuai dengan ketentuan.",
-    "Kaidah penganggaran telah dipatuhi.",
-    "Penandaan tematik telah dilakukan dengan tepat.",
-    "Dokumen pendukung telah lengkap.",
-    "Kelayakan rincian baru telah memadai.",
-    "Pengalokasian tematik telah sesuai arahan.",
-)
-_TANPA_KLASIFIKASI = (
-    "Terdapat temuan hasil reviu yang belum diklasifikasikan menurut aspek ini pada "
-    "kertas kerja, sehingga status aspek ini tidak dapat disimpulkan dari laporan. "
-    "Uraian seluruh temuan disajikan pada bab Rekomendasi."
-)
-
-
-# ── Bab Hasil Audit (audit-umum) ─────────────────────────────────────────────
-# V6 mencetak bab ini dalam bentuk kertas kerja: dikelompokkan per sasaran
-# ("F.1. Memastikan ..."), lalu tiap temuan diurai dengan label telanjang
-# "Kondisi:/Kriteria:/Sebab:/Akibat:". Auditor menghendaki bentuk yang dipakai
-# LHA Inspektorat II sesungguhnya (27 Agu 2026): langsung ke temuan, dinomori
-# lurus, dan unsurnya dirangkai kalimat penyambung — enak dibaca pimpinan dan
-# objek audit, bukan format kertas kerja yang ditempel.
-
 def _periksa_catatan_vs_temuan(folder: Path) -> str | None:
     """Pastikan catatan laporan = temuan kertas kerja. Return pesan galat / None.
 
@@ -1210,46 +1182,138 @@ def _betulkan_periode(docx_path: Path, folder: Path) -> bool:
     return bool(n)
 
 
-def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str) -> list[str]:
-    """Tambal dua cacat reviu-rka-kl. Return catatan peringatan."""
-    peringatan: list[str] = []
+# ── LHR RKA-K/L ──────────────────────────────────────────────────────────────
+# Bentuknya mengikuti LHR Renja RKA-K/L Inspektorat II yang sesungguhnya: hasil
+# dikelompokkan PER UNIT KERJA lalu PER RINCIAN OUTPUT (RO), bukan per enam
+# aspek Pasal 61. Enam aspek itu tetap kerangka KERJA Anggota Tim saat mereviu;
+# yang keliru sebelumnya adalah LAPORANNYA ikut disusun menurut aspek — bab
+# Hasil Reviu jadi hanya enam kalimat status sementara seluruh temuan tidak
+# muncul di mana pun. (Diperbaiki 27 Agu 2026 dari dua LHR RKA-K/L milik
+# auditor.) Rekomendasi berada di Ringkasan Eksekutif, bukan bab tersendiri.
+
+
+def _blok_uraian_rkakl(folder: Path) -> list[tuple] | None:
+    """Uraian Hasil Reviu: unit kerja (tebal) -> RO -> judul catatan + uraian.
+
+    Urutan unit dan RO mengikuti urutan penulisan Ketua Tim, tidak diurutkan
+    ulang — dialah yang paham urutan penyajian yang dikehendaki pimpinan.
+    """
+    narasi = safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}
+    catatan = narasi.get("catatan") or []
+    if not catatan:
+        return None
+
+    urut: list[str] = []
+    per_unit: dict[str, list[dict]] = {}
+    for c in catatan:
+        unit = str(c.get("unit_kerja") or "").strip() or "Tanpa Unit Kerja"
+        if unit not in per_unit:
+            per_unit[unit] = []
+            urut.append(unit)
+        per_unit[unit].append(c)
+
+    blok: list[tuple] = []
+    for b in _daftar(narasi.get("pengantar_hasil")):
+        blok.append(("p", b, False))
+    for unit in urut:
+        blok.append(("p", unit, True))
+        ro_terakhir = None
+        for c in per_unit[unit]:
+            ro = str(c.get("ro") or "").strip()
+            if ro and ro != ro_terakhir:
+                blok.append(("p", ro, False))
+                ro_terakhir = ro
+            judul = str(c.get("judul") or "").strip()
+            if judul:
+                blok.append(("p", judul, False))
+            for b in _daftar(c.get("narasi")):
+                blok.append(("p", b, False))
+            # Ketidaksesuaian format TOR disajikan sebagai tabel 3 kolom,
+            # persis LHR Inspektorat II.
+            komponen = [k for k in (c.get("komponen_tor") or []) if isinstance(k, dict)]
+            if komponen:
+                blok.append(("tabel", "", ["No", "Format (Komponen TOR)", "Catatan"],
+                             [[str(i), str(k.get("komponen") or ""),
+                               str(k.get("catatan") or "")]
+                              for i, k in enumerate(komponen, 1)]))
+            for t in (c.get("tabel") or []):
+                blok.append(("tabel", str(t.get("judul") or "").strip(),
+                             list(t.get("kolom") or []), list(t.get("baris") or [])))
+    return blok
+
+
+def _blok_ringkasan_eksekutif(folder: Path) -> list[tuple] | None:
+    """Ringkasan Eksekutif: paragraf pembuka + catatan berulang + REKOMENDASI."""
+    narasi = safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}
+    ringkas = _daftar(narasi.get("ringkasan_eksekutif"))
+    if not ringkas:
+        return None
+    blok: list[tuple] = [("p", b, False) for b in ringkas]
+    rek = safe_read_json(folder / "_LHP" / "rekomendasi.json") or {}
+    kkp = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    butir: list[str] = []
+    for t in (kkp.get("temuan") or []):
+        nilai = rek.get(str(t.get("id_temuan") or ""))
+        if isinstance(nilai, dict):
+            nilai = nilai.get("rekomendasi")
+        nilai = str(nilai or "").strip()
+        if nilai and nilai not in butir:
+            butir.append(nilai)
+    if butir:
+        blok.append(("p", "Inspektorat II merekomendasikan hal-hal sebagai berikut:", False))
+        blok.extend(("p", f"{i}. {b}", False) for i, b in enumerate(butir, 1))
+    return blok
+
+
+def _susun_lhr_rkakl(docx_path: Path, folder: Path, args: dict) -> list[str]:
+    """Susun seluruh isi LHR RKA-K/L. Return daftar peringatan."""
+    from app.lhr_narasi import _parse_context
+
+    ctx = _parse_context(folder / "context.md")
+    narasi = safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}
     doc = Document(str(docx_path))
-    berubah = False
+    warn: list[str] = []
 
-    # Gambaran Umum: V6 membacanya dari `gambaran_umum_rkakl` yang tak pernah
-    # ditulis siapa pun, sementara tulisan agen KT terbuang percuma.
-    for par in doc.paragraphs:
-        if par.text.strip().startswith("[DIISI — Gambaran umum RKA-K/L") and gambaran_umum:
-            _set_para(par, gambaran_umum)
-            for r in par.runs:
-                r.italic = False
-            berubah = True
-            break
+    dasar = _daftar(narasi.get("dasar_hukum")) or _daftar(ctx.get("dasar_penugasan"))
+    tujuan = _daftar(narasi.get("tujuan")) or _daftar(ctx.get("tujuan"))
+    rl = str(args.get("ruang_lingkup") or ctx.get("ruang_lingkup") or "").strip()
+    metod = _daftar(narasi.get("metodologi")) or [
+        "Reviu dilaksanakan dengan menelaah dokumen Renja dan RKA-K/L beserta dokumen "
+        "pendukungnya, yaitu Kerangka Acuan Kerja (TOR) dan Rincian Anggaran Biaya (RAB).",
+        "Reviu dilaksanakan sesuai standar reviu yang berlaku bagi Aparat Pengawasan "
+        "Intern Pemerintah dan memberikan keyakinan terbatas.",
+    ]
 
-    # Keyakinan palsu C1–C6: hanya diganti bila memang ADA temuan yang tak
-    # terklasifikasi. Bila tidak ada temuan sama sekali, kalimat afirmatifnya sah.
-    try:
-        temuan = json.loads((folder / "_KKP" / "temuan.json")
-                            .read_text(encoding="utf-8")).get("temuan") or []
-    except (OSError, ValueError):
-        temuan = []
-    tanpa_area = temuan and not any(str(t.get("area") or "").strip() for t in temuan)
-    if tanpa_area:
-        n = 0
-        for par in doc.paragraphs:
-            if par.text.strip() in _KLAIM_RKAKL:
-                _set_para(par, _TANPA_KLASIFIKASI)
-                n += 1
-        if n:
-            berubah = True
-            peringatan.append(
-                f"WARNING:{n} sub-bab aspek RKA-K/L tidak dapat disimpulkan — "
-                f"{len(temuan)} temuan tidak punya field `area` (c1..c6). Isi `area` "
-                f"tiap temuan lalu render ulang.")
+    gu = _daftar(args.get("gambaran_umum"))
+    blok_gu = [("p", b, False) for b in gu] if gu else None
+    pagu = narasi.get("tabel_pagu")
+    if blok_gu and isinstance(pagu, dict) and pagu.get("baris"):
+        blok_gu.append(("tabel", str(pagu.get("judul") or "").strip(),
+                        list(pagu.get("kolom") or []), list(pagu.get("baris") or [])))
+    elif blok_gu:
+        warn.append("tabel pagu tidak disertakan — isi `tabel_pagu` bila diperlukan")
 
-    if berubah:
-        doc.save(str(docx_path))
-    return peringatan
+    isi = [
+        ("{{RE_RKAKL}}", _blok_ringkasan_eksekutif(folder)),
+        ("{{DH_RKAKL}}", [("p", f"{i}. {b}", False) for i, b in enumerate(dasar, 1)] or None),
+        ("{{TUJUAN_RKAKL}}", [("p", b, False) for b in tujuan] or None),
+        ("{{RL_RKAKL}}", [("p", f"Ruang lingkup reviu adalah {_kecilkan_awal(rl)}", False)]
+         if rl else None),
+        ("{{METOD_RKAKL}}", [("p", b, False) for b in metod]),
+        ("{{GU_RKAKL}}", blok_gu),
+        ("{{URAIAN_RKAKL}}", _blok_uraian_rkakl(folder)),
+    ]
+    for penanda, blok in isi:
+        nama = penanda.strip("{}")
+        if not blok:
+            warn.append(f"{nama} tidak terisi (sumber datanya kosong)")
+            continue
+        if not _isi_penanda_blok(doc, penanda, blok):
+            warn.append(f"{nama} gagal disusun (penanda tak ditemukan)")
+
+    _seragamkan(doc, "Ringkasan Eksekutif", "Apresiasi")
+    doc.save(str(docx_path))
+    return warn
 
 
 async def _render_kksa(folder: Path, args: dict) -> dict:
@@ -1405,8 +1469,8 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
                       key=lambda f: f.stat().st_mtime)
         if outs:
-            for pesan in _betulkan_rkakl(outs[-1], folder, args.get("gambaran_umum") or ""):
-                warn_d += f"|{pesan}"
+            for pesan in _susun_lhr_rkakl(outs[-1], folder, args):
+                warn_d += f"|WARNING:{pesan}"
 
     # A1: sesuaikan judul/kata + nama file per jenis (LHA/LHR/LHE/LP).
     final_name = _finalize_jenis(folder, skill)
