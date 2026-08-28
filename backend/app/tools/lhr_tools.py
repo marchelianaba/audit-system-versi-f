@@ -529,6 +529,55 @@ _TANPA_KLASIFIKASI = (
 # lurus, dan unsurnya dirangkai kalimat penyambung — enak dibaca pimpinan dan
 # objek audit, bukan format kertas kerja yang ditempel.
 
+def _daftar(nilai) -> list[str]:
+    """Terima list ATAU teks berbaris; kembalikan daftar butir bersih."""
+    if isinstance(nilai, list):
+        butir = [str(x).strip() for x in nilai]
+    else:
+        butir = [b.strip(" -•\t") for b in str(nilai or "").split("\n")]
+    return [b for b in butir if b]
+
+
+def _sisip_tabel(doc, jangkar, judul: str, kolom: list, baris: list) -> None:
+    """Sisipkan tabel bergaris sebelum `jangkar`, dengan judul di atasnya."""
+    from copy import deepcopy
+
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+    from docx.text.paragraph import Paragraph
+
+    if judul:
+        baru = deepcopy(jangkar._p)
+        jangkar._p.addprevious(baru)
+        par = Paragraph(baru, jangkar._parent)
+        _set_para(par, judul)
+        for r in par.runs:
+            r.bold = True
+            r.italic = False
+        par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    tab = doc.add_table(rows=len(baris) + 1, cols=len(kolom))
+    tab.style = "Table Grid"
+    for j, h in enumerate(kolom):
+        sel = tab.rows[0].cells[j]
+        sel.text = ""
+        run = sel.paragraphs[0].add_run(str(h))
+        run.bold = True
+        run.font.size = Pt(10)
+        sel.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for i, brs in enumerate(baris, 1):
+        for j, nilai in enumerate(brs[:len(kolom)]):
+            sel = tab.rows[i].cells[j]
+            sel.text = ""
+            run = sel.paragraphs[0].add_run(str(nilai))
+            run.font.size = Pt(10)
+    jangkar._p.addprevious(tab._element)
+    # paragraf kosong pemisah supaya tabel tidak menempel ke teks berikutnya
+    kosong = deepcopy(jangkar._p)
+    jangkar._p.addprevious(kosong)
+    _set_para(Paragraph(kosong, jangkar._parent), "")
+
+
 def _kecilkan_awal(teks: str) -> str:
     """Sambung akibat ke "Hal tersebut mengakibatkan ..." tanpa huruf besar nyempil."""
     teks = teks.strip()
@@ -540,40 +589,41 @@ def _kecilkan_awal(teks: str) -> str:
     return teks[0].lower() + teks[1:]
 
 
-def _butir(teks: str) -> list[str]:
-    """Pecah kriteria/sebab bernomor jadi butir; kalau tunggal, kembalikan apa adanya."""
-    baris = [b.strip(" -•\t") for b in str(teks or "").split("\n") if b.strip()]
-    return baris or []
+def _blok_hasil_audit(folder: Path) -> list[tuple] | None:
+    """Susun isi bab Hasil Audit dari narasi Ketua Tim.
 
+    Bahannya tetap kertas kerja Anggota Tim, tetapi yang masuk laporan adalah
+    tulisan Ketua Tim — bukan salinan mentah satu kolom `temuan.json` jadi satu
+    paragraf. Kalimat penyambung ("Kondisi tersebut tidak sesuai dengan:" dst)
+    ditambahkan di sini supaya seragam di seluruh laporan.
 
-def _blok_hasil_audit(folder: Path) -> list[tuple[str, bool]] | None:
-    """Susun isi bab Hasil Audit. Return [(teks, tebal)] atau None bila tak ada temuan."""
-    data = safe_read_json(folder / "_KKP" / "temuan.json") or {}
-    temuan = data.get("temuan") or []
-    if not temuan:
+    Return daftar item: ("p", teks, tebal) atau ("tabel", judul, kolom, baris).
+    """
+    catatan = (safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan") or []
+    if not catatan:
         return None
-    blok: list[tuple[str, bool]] = []
-    for i, t in enumerate(temuan, 1):
-        judul = str(t.get("judul_temuan") or f"Temuan {i}").strip()
-        blok.append((f"{i}. {judul}", True))
-        blok.append(("Kondisi", True))
-        kondisi = str(t.get("kondisi") or "").strip()
-        for b in (_butir(kondisi) or [kondisi]):
-            if b:
-                blok.append((b, False))
-        kriteria = _butir(t.get("kriteria"))
+    blok: list[tuple] = []
+    for i, c in enumerate(catatan, 1):
+        blok.append(("p", f"{i}. {str(c.get('judul') or f'Temuan {i}').strip()}", True))
+        blok.append(("p", "Kondisi", True))
+        for b in _daftar(c.get("narasi")):
+            blok.append(("p", b, False))
+        for t in (c.get("tabel") or []):
+            blok.append(("tabel", str(t.get("judul") or "").strip(),
+                         list(t.get("kolom") or []), list(t.get("baris") or [])))
+        kriteria = _daftar(c.get("kriteria"))
         if kriteria:
-            blok.append(("Kondisi tersebut tidak sesuai dengan:", False))
+            blok.append(("p", "Kondisi tersebut tidak sesuai dengan:", False))
             for j, b in enumerate(kriteria, 1):
-                blok.append((b if len(kriteria) == 1 else f"{j}. {b}", False))
-        sebab = _butir(t.get("sebab"))
+                blok.append(("p", b if len(kriteria) == 1 else f"{j}. {b}", False))
+        sebab = _daftar(c.get("sebab"))
         if sebab:
-            blok.append(("Hal tersebut disebabkan:", False))
+            blok.append(("p", "Hal tersebut disebabkan:", False))
             for j, b in enumerate(sebab, 1):
-                blok.append((b if len(sebab) == 1 else f"{j}. {b}", False))
-        akibat = str(t.get("akibat") or "").strip()
+                blok.append(("p", b if len(sebab) == 1 else f"{j}. {b}", False))
+        akibat = str(c.get("akibat") or "").strip()
         if akibat:
-            blok.append((f"Hal tersebut mengakibatkan {_kecilkan_awal(akibat)}", False))
+            blok.append(("p", f"Hal tersebut mengakibatkan {_kecilkan_awal(akibat)}", False))
     return blok
 
 
@@ -596,13 +646,16 @@ def _tulis_ulang_hasil_audit(docx_path: Path, folder: Path) -> bool:
         return False
 
     donor = par[awal]
-    for teks, tebal in blok:
+    for item in blok:
+        if item[0] == "tabel":
+            _sisip_tabel(doc, par[akhir], item[1], item[2], item[3])
+            continue
         baru = deepcopy(donor._p)
         par[akhir]._p.addprevious(baru)
         salinan = Paragraph(baru, donor._parent)
-        _set_para(salinan, teks)
+        _set_para(salinan, item[1])
         for r in salinan.runs:
-            r.bold = tebal
+            r.bold = item[2]
             r.italic = False
     for k in range(awal + 1, akhir):
         par[k]._p.getparent().remove(par[k]._p)
@@ -734,6 +787,16 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     laporan — persis kelas cacat yang tidak boleh ada di produk audit.
     (Ditambahkan 9 Agu 2026; sebelumnya overlay hanya ada di jalur KKP.)
     """
+    if _slug(args.get("skill") or "") == "audit-umum" and not (
+            safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan"):
+        return {"content": [{"type": "text", "text": (
+            "FAILED|narasi bab Hasil Audit belum ada. Panggil `write_narasi_laporan` "
+            "lebih dulu: tiap `catatan` memuat judul + `narasi` (uraian KONDISI, boleh "
+            "berbutir/kronologis) + `kriteria` + `sebab` + `akibat`, dan boleh disertai "
+            "`tabel` untuk rincian. Susun ulang dari temuan.json — JANGAN salin mentah "
+            "satu kolom kertas kerja jadi satu paragraf."
+        )}], "is_error": True}
+
     if _slug(args.get("skill") or "") in ("reviu-pengadaan", "reviu-umum"):
         return {"content": [{"type": "text", "text": (
             "FAILED|skill ini tidak memakai jalur KKSA. Laporannya berupa NARASI di atas "
@@ -885,6 +948,15 @@ async def render_report(args: dict) -> dict:
     "laporan. TIAP isian punya MUARA tetap. reviu-pengadaan: `catatan` -> bab C Hasil "
     "Reviu, `komponen_harga` -> tabel bab B Gambaran Umum, `hal_diperhatikan` -> bab E "
     "Rekomendasi; bab D Simpulan ditulis renderer sendiri (jangan kamu isi). "
+    "audit-umum: `catatan` -> bab III Hasil Audit, `hal_diperhatikan` -> bab IV "
+    "Rekomendasi. Di audit-umum tiap catatan memakai kerangka LHA: `narasi` = uraian "
+    "KONDISI (kronologis, boleh berbutir), lalu `kriteria` (list), `sebab` (list), "
+    "`akibat` (kalimat). Renderer yang menambahkan kalimat penyambung \"Kondisi tersebut "
+    "tidak sesuai dengan:\" / \"Hal tersebut disebabkan:\" / \"Hal tersebut "
+    "mengakibatkan ...\" — kamu JANGAN menulis label itu. Boleh menyertakan `tabel`: "
+    "[{judul, kolom:[...], baris:[[...]]}] untuk rincian yang lebih jelas disajikan "
+    "sebagai tabel (mis. rincian nilai per pihak). SUSUN ULANG dari temuan.json — "
+    "jangan salin mentah satu kolom kertas kerja jadi satu paragraf. "
     "reviu-umum: `catatan` -> bab D Hasil Reviu, `hal_diperhatikan` -> bab E Catatan "
     "dan Rekomendasi (`komponen_harga` TIDAK dipakai). Di reviu-umum, `catatan` WAJIB "
     "memuat SEMUA aspek yang tidak berkesimpulan SESUAI — baik yang TIDAK_SESUAI "
@@ -929,6 +1001,13 @@ async def write_narasi_laporan(args: dict) -> dict:
             "narasi": narasi,
             "jenis": "positif" if jenis.startswith("pos") else "catatan",
             "id_temuan": c.get("id_temuan"),
+            # Unsur khas LHA (audit-umum). Skill reviu tidak memakainya —
+            # narasinya satu paragraf mengalir tanpa kerangka K/K/S/A.
+            "kriteria": _daftar(c.get("kriteria")),
+            "sebab": _daftar(c.get("sebab")),
+            "akibat": str(c.get("akibat") or "").strip(),
+            "tabel": [t for t in (c.get("tabel") or [])
+                      if isinstance(t, dict) and t.get("kolom") and t.get("baris")],
         })
     if not catatan_bersih:
         return {"content": [{"type": "text",
