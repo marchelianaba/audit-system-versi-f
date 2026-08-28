@@ -161,10 +161,9 @@ Ikuti `panduan-format-umum/PANDUAN.md`. Struktur isi:
 - **B. Tujuan & Ruang Lingkup**
 - **C. Periode Pemantauan** — dibuka "Pemantauan dilaksanakan terhitung mulai tanggal ..." 
 - **D. Metodologi**
-- **E. Ringkasan Status** — tabel status per item (target, realisasi, % capaian, status) + kalimat rekap. **Dihitung dari `status`/`target`/`realisasi` di kertas kerja**, bukan ditulis ulang — supaya bab E dan bab F tidak bisa saling bertentangan.
-- **F. Hasil Pemantauan** — narasi per item yang **MENGALIR**: judul + uraian yang merangkai kondisi, kriteria, sebab, dan akibat jadi kalimat. **DILARANG memakai label "Kondisi:/Kriteria:/Sebab:/Akibat:"**, dan **rekomendasi TIDAK ditulis di sini** — tempatnya bab G. Temuan dikunci ke `_KKP/temuan.json`: Ketua Tim merangkai, tidak menambah atau menghilangkan.
-- **G. Rekomendasi & Tindakan Percepatan** — yang membutuhkan keputusan pimpinan
-- **H. Apresiasi**
+- **E. Hasil Pemantauan** — narasi per item yang **MENGALIR**: judul + uraian yang merangkai kondisi, kriteria, sebab, dan akibat jadi kalimat. **DILARANG memakai label "Kondisi:/Kriteria:/Sebab:/Akibat:"**, dan **rekomendasi TIDAK ditulis di sini** — tempatnya bab G. Temuan dikunci ke `_KKP/temuan.json`: Ketua Tim merangkai, tidak menambah atau menghilangkan.
+- **F. Rekomendasi & Tindakan Percepatan** — yang membutuhkan keputusan pimpinan
+- **G. Apresiasi**
 
 ### Bahasa Standar
 

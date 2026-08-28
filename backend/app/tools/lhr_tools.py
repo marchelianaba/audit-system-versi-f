@@ -959,85 +959,12 @@ def _seragamkan(doc, dari: str, sampai: str) -> None:
 
 
 # ── LHPemantauan (pemantauan-umum) ───────────────────────────────────────────
-# Status per item (HIJAU/KUNING/MERAH) ditetapkan SKILL.md dengan ambang capaian.
-# Sebelumnya bab Ringkasan Status menghitung field `status` yang TIDAK PERNAH
-# ditulis siapa pun, sehingga selalu "0 HIJAU, 0 KUNING, 0 MERAH" sementara bab
-# berikutnya menampilkan item-item berstatus KUNING — dua bab saling menyangkal
-# dalam satu laporan. (Ditemukan 27 Agu 2026.)
-
-_STATUS_PANTAU = ("HIJAU", "KUNING", "MERAH")
-
-
-def _status_item(t: dict) -> str:
-    """Status item: dari isian Anggota Tim; bila kosong, diturunkan dari capaian.
-
-    Ambang mengikuti SKILL.md pemantauan-umum: >=95% HIJAU, 70-95% KUNING,
-    <70% MERAH. Tidak dapat ditentukan -> string kosong (JANGAN ditebak).
-    """
-    ada = str(t.get("status") or "").strip().upper()
-    if ada in _STATUS_PANTAU:
-        return ada
-    capaian = _persen_capaian(t)
-    if capaian is None:
-        return ""
-    if capaian >= 95:
-        return "HIJAU"
-    return "KUNING" if capaian >= 70 else "MERAH"
-
-
-def _angka(nilai):
-    """Ambil angka dari teks bercampur satuan (mis. "168 kegiatan" -> 168.0)."""
-    if isinstance(nilai, (int, float)):
-        return float(nilai)
-    m = re.search(r"-?[\d.,]+", str(nilai or ""))
-    if not m:
-        return None
-    teks = m.group(0).replace(".", "").replace(",", ".")
-    try:
-        return float(teks)
-    except ValueError:
-        return None
-
-
-def _persen_capaian(t: dict):
-    target, real = _angka(t.get("target")), _angka(t.get("realisasi"))
-    if target in (None, 0) or real is None:
-        return None
-    return real / target * 100
-
-
-def _blok_ringkasan_status(folder: Path) -> list[tuple] | None:
-    """E — tabel status per item + kalimat rekap. Dihitung dari data, bukan dikarang."""
-    temuan = (safe_read_json(folder / "_KKP" / "temuan.json") or {}).get("temuan") or []
-    if not temuan:
-        return None
-    baris, hitung = [], {k: 0 for k in _STATUS_PANTAU}
-    tanpa_status = 0
-    for i, t in enumerate(temuan, 1):
-        st = _status_item(t)
-        if st:
-            hitung[st] += 1
-        else:
-            tanpa_status += 1
-        capaian = _persen_capaian(t)
-        baris.append([str(i), str(t.get("judul_temuan") or t.get("ro") or f"Item {i}"),
-                      str(t.get("target") or ""), str(t.get("realisasi") or ""),
-                      f"{capaian:.1f}".replace(".", ",") + "%" if capaian is not None else "",
-                      st or "Belum ditetapkan"])
-    blok: list[tuple] = [("tabel", "Tabel 1. Ringkasan Status Item yang Dipantau",
-                          ["No", "Item yang Dipantau", "Target", "Realisasi",
-                           "% Capaian", "Status"], baris)]
-    n = len(temuan)
-    kal = (f"Dari {n} ({_terbilang(n)}) item yang dipantau, {hitung['HIJAU']} item "
-           f"berstatus hijau, {hitung['KUNING']} item berstatus kuning, dan "
-           f"{hitung['MERAH']} item berstatus merah")
-    kal += (f", serta {tanpa_status} item belum dapat ditetapkan statusnya."
-            if tanpa_status else ".")
-    if hitung["MERAH"]:
-        kal += " Item berstatus merah memerlukan intervensi segera."
-    blok.append(("p", kal, False))
-    return blok
-
+# Bab "Ringkasan Status" DIBUANG atas keputusan auditor (27 Agu 2026). Bab itu
+# menghitung field `status`/`target`/`realisasi` yang tidak pernah ditulis siapa
+# pun — hasilnya selalu "0 HIJAU, 0 KUNING, 0 MERAH" sementara bab berikutnya
+# menampilkan item berstatus KUNING, dua bab saling menyangkal. Menambalnya
+# menuntut medan isian baru di formulir KKSA dan panel sunting temuan; auditor
+# memilih laporan langsung masuk ke Hasil Pemantauan saja.
 
 def _blok_hasil_pemantauan(folder: Path) -> list[tuple] | None:
     """F — narasi per item tulisan Ketua Tim. TANPA rekomendasi (itu bab G)."""
@@ -1084,9 +1011,8 @@ def _susun_lhpemantauan(docx_path: Path, folder: Path, ruang_lingkup: str) -> li
         ("{{B_TUJUAN_LINGKUP}}", _blok_tujuan_lingkup(ctx, ruang_lingkup)),
         ("{{C_PERIODE_PEMANTAUAN}}", blok_periode),
         ("{{D_METODOLOGI_PEMANTAUAN}}", [("p", metodologi, False)]),
-        ("{{E_RINGKASAN}}", _blok_ringkasan_status(folder)),
-        ("{{F_HASIL_PEMANTAUAN}}", _blok_hasil_pemantauan(folder)),
-        ("{{G_REKOM}}", _blok_rekomendasi_evaluasi(folder)),
+        ("{{E_HASIL_PEMANTAUAN}}", _blok_hasil_pemantauan(folder)),
+        ("{{F_REKOM}}", _blok_rekomendasi_evaluasi(folder)),
     ]
     for penanda, blok in isi:
         nama = penanda.strip("{}")
@@ -1096,7 +1022,7 @@ def _susun_lhpemantauan(docx_path: Path, folder: Path, ruang_lingkup: str) -> li
         if not _isi_penanda_blok(doc, penanda, blok):
             warn.append(f"{nama} gagal disusun (penanda tak ditemukan)")
 
-    _seragamkan(doc, "A.  Dasar", "H.  Apresiasi")
+    _seragamkan(doc, "A.  Dasar", "G.  Apresiasi")
     doc.save(str(docx_path))
     return warn
 
