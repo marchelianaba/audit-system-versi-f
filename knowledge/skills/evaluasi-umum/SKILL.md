@@ -161,20 +161,28 @@ Rekomendasi: [Tindakan perbaikan spesifik (sistem-level): apa, oleh siapa, kapan
 
 ## Format Output Laporan (LHE)
 
-Ikuti `panduan-format-umum/PANDUAN.md`. Struktur isi:
+Kerangka bab mengikuti LHE Inspektorat II yang berlaku:
 
-- **A. Dasar**
-- **B. Tujuan & Ruang Lingkup**
-- **C. Metodologi** (telaah dokumen, wawancara, observasi, analisis data)
-- **D. Gambaran Umum Objek Evaluasi**
-- **E. Hasil Evaluasi**
-  - E.1 Skor per Dimensi (tabel rekapitulasi)
-  - E.2 Predikat & Posisi (jika ada level/tingkat)
-  - E.3 Analisis Per Dimensi (narasi)
-- **F. Temuan & Catatan** — Kondisi/Kriteria/**Sebab**/Akibat/Rekomendasi per temuan (Sebab anti-mengarang: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data" — jangan mengarang)
-- **G. Rekomendasi** — kompilasi rekomendasi terpilih (sistem-level, bukan per temuan)
-- **H. Simpulan**
-- **I. Apresiasi**
+- **A. Dasar Pelaksanaan Evaluasi**
+- **B. Tujuan dan Sasaran Evaluasi** — dua butir terpisah (a. Tujuan, b. Sasaran)
+- **C. Ruang Lingkup Evaluasi**
+- **D. Metodologi Evaluasi**
+- **E. Hasil Evaluasi** — rekap keadaan objek + analisisnya (boleh bertabel), lalu
+  **temuan bernomor** yang ditulis **MENGALIR**: judul + uraian yang merangkai kondisi,
+  kriteria, sebab, dan akibat jadi kalimat. **DILARANG memakai label
+  "Kondisi:/Kriteria:/Sebab:/Akibat:"** — itu format kertas kerja, bukan laporan.
+  Tabel rekapitulasi skor hanya dicetak **bila ada instrumen LKE**.
+- **F. Rekomendasi**
+- **G. Apresiasi**
+
+**Tanpa instrumen LKE, evaluasi TIDAK menghasilkan skor dan predikat.** Laporannya
+cukup memuat hasil evaluasi dan rekomendasi. Jangan menetapkan dimensi, bobot, atau
+skor sendiri hanya demi mengisi tabel — angka yang tidak bersandar instrumen adalah
+angka karangan.
+
+Laporan disusun Ketua Tim lewat `write_narasi_laporan` (`pengantar_hasil` + `catatan`
+→ bab E) dan `write_rekomendasi_json` (→ bab F). Temuan dikunci ke `_KKP/temuan.json`:
+Ketua Tim merangkai, tidak menambah atau menghilangkan.
 
 ### Bahasa Simpulan
 
