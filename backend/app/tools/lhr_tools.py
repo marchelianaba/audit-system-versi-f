@@ -924,8 +924,16 @@ def _blok_rekomendasi_evaluasi(folder: Path) -> list[tuple] | None:
                   "merekomendasikan agar:", False)] + butir
 
 
+# Jarak sebelum judul bab. Dipakai spasi-sebelum-paragraf, BUKAN paragraf kosong:
+# paragraf kosong bisa terbawa/terhapus saat isi bab disusun ulang, sedangkan
+# setelan spasi menempel pada judulnya yang tidak pernah dibuang.
+JARAK_ANTAR_BAB_PT = 12
+
+
 def _seragamkan(doc, dari: str, sampai: str) -> None:
-    """Samakan huruf & perataan antar-bab: Arial 12, justify."""
+    """Samakan huruf & perataan antar-bab (Arial 12, justify) + jarak antar bab."""
+    import re
+
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
 
@@ -934,11 +942,16 @@ def _seragamkan(doc, dari: str, sampai: str) -> None:
     j = next((k for k, x in enumerate(par) if x.text.strip().startswith(sampai)), None)
     if i is None or j is None:
         return
-    for x in par[i:j]:
-        if not x.text.strip():
+    for urut, x in enumerate(par[i:j + 1]):
+        teks = x.text.strip()
+        if not teks:
             continue
         if x.paragraph_format.alignment is None:
             x.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        # Judul bab (A. ... G.) diberi jarak dari isi bab sebelumnya — kecuali
+        # bab pertama, yang sudah menempel pada surat pengantar.
+        if urut and re.match(r"^[A-Z]\.\s", teks) and len(teks) < 60:
+            x.paragraph_format.space_before = Pt(JARAK_ANTAR_BAB_PT)
         for r in x.runs:
             r.font.name = "Arial"
             if r.font.size is not None and r.font.size < Pt(12):
