@@ -958,6 +958,161 @@ def _seragamkan(doc, dari: str, sampai: str) -> None:
                 r.font.size = Pt(12)
 
 
+# ── LHPemantauan (pemantauan-umum) ───────────────────────────────────────────
+# Status per item (HIJAU/KUNING/MERAH) ditetapkan SKILL.md dengan ambang capaian.
+# Sebelumnya bab Ringkasan Status menghitung field `status` yang TIDAK PERNAH
+# ditulis siapa pun, sehingga selalu "0 HIJAU, 0 KUNING, 0 MERAH" sementara bab
+# berikutnya menampilkan item-item berstatus KUNING — dua bab saling menyangkal
+# dalam satu laporan. (Ditemukan 27 Agu 2026.)
+
+_STATUS_PANTAU = ("HIJAU", "KUNING", "MERAH")
+
+
+def _status_item(t: dict) -> str:
+    """Status item: dari isian Anggota Tim; bila kosong, diturunkan dari capaian.
+
+    Ambang mengikuti SKILL.md pemantauan-umum: >=95% HIJAU, 70-95% KUNING,
+    <70% MERAH. Tidak dapat ditentukan -> string kosong (JANGAN ditebak).
+    """
+    ada = str(t.get("status") or "").strip().upper()
+    if ada in _STATUS_PANTAU:
+        return ada
+    capaian = _persen_capaian(t)
+    if capaian is None:
+        return ""
+    if capaian >= 95:
+        return "HIJAU"
+    return "KUNING" if capaian >= 70 else "MERAH"
+
+
+def _angka(nilai):
+    """Ambil angka dari teks bercampur satuan (mis. "168 kegiatan" -> 168.0)."""
+    if isinstance(nilai, (int, float)):
+        return float(nilai)
+    m = re.search(r"-?[\d.,]+", str(nilai or ""))
+    if not m:
+        return None
+    teks = m.group(0).replace(".", "").replace(",", ".")
+    try:
+        return float(teks)
+    except ValueError:
+        return None
+
+
+def _persen_capaian(t: dict):
+    target, real = _angka(t.get("target")), _angka(t.get("realisasi"))
+    if target in (None, 0) or real is None:
+        return None
+    return real / target * 100
+
+
+def _blok_ringkasan_status(folder: Path) -> list[tuple] | None:
+    """E — tabel status per item + kalimat rekap. Dihitung dari data, bukan dikarang."""
+    temuan = (safe_read_json(folder / "_KKP" / "temuan.json") or {}).get("temuan") or []
+    if not temuan:
+        return None
+    baris, hitung = [], {k: 0 for k in _STATUS_PANTAU}
+    tanpa_status = 0
+    for i, t in enumerate(temuan, 1):
+        st = _status_item(t)
+        if st:
+            hitung[st] += 1
+        else:
+            tanpa_status += 1
+        capaian = _persen_capaian(t)
+        baris.append([str(i), str(t.get("judul_temuan") or t.get("ro") or f"Item {i}"),
+                      str(t.get("target") or ""), str(t.get("realisasi") or ""),
+                      f"{capaian:.1f}".replace(".", ",") + "%" if capaian is not None else "",
+                      st or "Belum ditetapkan"])
+    blok: list[tuple] = [("tabel", "Tabel 1. Ringkasan Status Item yang Dipantau",
+                          ["No", "Item yang Dipantau", "Target", "Realisasi",
+                           "% Capaian", "Status"], baris)]
+    n = len(temuan)
+    kal = (f"Dari {n} ({_terbilang(n)}) item yang dipantau, {hitung['HIJAU']} item "
+           f"berstatus hijau, {hitung['KUNING']} item berstatus kuning, dan "
+           f"{hitung['MERAH']} item berstatus merah")
+    kal += (f", serta {tanpa_status} item belum dapat ditetapkan statusnya."
+            if tanpa_status else ".")
+    if hitung["MERAH"]:
+        kal += " Item berstatus merah memerlukan intervensi segera."
+    blok.append(("p", kal, False))
+    return blok
+
+
+def _blok_hasil_pemantauan(folder: Path) -> list[tuple] | None:
+    """F — narasi per item tulisan Ketua Tim. TANPA rekomendasi (itu bab G)."""
+    narasi = safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}
+    catatan = narasi.get("catatan") or []
+    if not catatan:
+        return None
+    blok: list[tuple] = []
+    pengantar = str(narasi.get("pengantar_hasil") or "").strip()
+    for b in _daftar(pengantar):
+        blok.append(("p", b, False))
+    for i, c in enumerate(catatan, 1):
+        blok.append(("p", f"{i}. {str(c.get('judul') or f'Item {i}').strip()}", True))
+        for b in _daftar(c.get("narasi")):
+            blok.append(("p", b, False))
+        for t in (c.get("tabel") or []):
+            blok.append(("tabel", str(t.get("judul") or "").strip(),
+                         list(t.get("kolom") or []), list(t.get("baris") or [])))
+    return blok
+
+
+def _susun_lhpemantauan(docx_path: Path, folder: Path, ruang_lingkup: str) -> list[str]:
+    """Susun isi LHPemantauan. Return daftar peringatan."""
+    from app.lhr_narasi import _parse_context
+
+    ctx = _parse_context(folder / "context.md")
+    doc = Document(str(docx_path))
+    warn: list[str] = []
+
+    periode = (ctx.get("periode") or "").strip().rstrip(".")
+    blok_periode = None
+    if periode:
+        awalan = ("Pemantauan dilaksanakan terhitung mulai tanggal "
+                  if periode[:1].isdigit() else "Pemantauan dilaksanakan ")
+        blok_periode = [("p", f"{awalan}{periode}.", False)]
+
+    metodologi = str(ctx.get("metodologi") or "").strip() or (
+        "Pemantauan dilaksanakan melalui penelaahan dokumen kemajuan pelaksanaan, "
+        "konfirmasi kepada pihak terkait, serta pembandingan realisasi terhadap target "
+        "yang ditetapkan. Pemantauan tidak memberikan opini keyakinan dan hanya "
+        "menyampaikan informasi status pelaksanaan berdasarkan data yang tersedia.")
+
+    isi = [
+        ("{{B_TUJUAN_LINGKUP}}", _blok_tujuan_lingkup(ctx, ruang_lingkup)),
+        ("{{C_PERIODE_PEMANTAUAN}}", blok_periode),
+        ("{{D_METODOLOGI_PEMANTAUAN}}", [("p", metodologi, False)]),
+        ("{{E_RINGKASAN}}", _blok_ringkasan_status(folder)),
+        ("{{F_HASIL_PEMANTAUAN}}", _blok_hasil_pemantauan(folder)),
+        ("{{G_REKOM}}", _blok_rekomendasi_evaluasi(folder)),
+    ]
+    for penanda, blok in isi:
+        nama = penanda.strip("{}")
+        if not blok:
+            warn.append(f"{nama} tidak terisi (sumber datanya kosong)")
+            continue
+        if not _isi_penanda_blok(doc, penanda, blok):
+            warn.append(f"{nama} gagal disusun (penanda tak ditemukan)")
+
+    _seragamkan(doc, "A.  Dasar", "H.  Apresiasi")
+    doc.save(str(docx_path))
+    return warn
+
+
+def _blok_tujuan_lingkup(ctx: dict, ruang_lingkup: str) -> list[tuple] | None:
+    """B — tujuan DAN ruang lingkup; sebelumnya hanya tujuan yang muncul."""
+    blok: list[tuple] = []
+    tujuan = str(ctx.get("tujuan") or "").strip()
+    if tujuan:
+        blok.append(("p", f"Tujuan pemantauan adalah {_kecilkan_awal(tujuan)}", False))
+    rl = (ruang_lingkup or ctx.get("ruang_lingkup") or "").strip()
+    if rl:
+        blok.append(("p", f"Ruang lingkup pemantauan adalah {_kecilkan_awal(rl)}", False))
+    return blok or None
+
+
 def _isi_penanda_blok(doc, penanda: str, blok: list[tuple]) -> bool:
     """Ganti paragraf berisi `penanda` dengan rangkaian blok."""
     from copy import deepcopy
@@ -1188,12 +1343,13 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     laporan — persis kelas cacat yang tidak boleh ada di produk audit.
     (Ditambahkan 9 Agu 2026; sebelumnya overlay hanya ada di jalur KKP.)
     """
-    if _slug(args.get("skill") or "") == "evaluasi-umum":
+    if _slug(args.get("skill") or "") in ("evaluasi-umum", "pemantauan-umum"):
         if not (safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan"):
             return {"content": [{"type": "text", "text": (
-                "FAILED|narasi bab Temuan belum ada. Panggil `write_narasi_laporan` lebih "
-                "dulu (tiap catatan: `id_temuan` + judul + `narasi` + `kriteria` + `sebab` "
-                "+ `akibat`, boleh bertabel)."
+                "FAILED|narasi bab Hasil belum ada. Panggil `write_narasi_laporan` lebih "
+                "dulu: `pengantar_hasil` + `catatan` (tiap catatan: `id_temuan` + judul + "
+                "`narasi` yang MENGALIR, boleh bertabel). Rekomendasi TIDAK ditulis di sini "
+                "— itu bab tersendiri, dari `write_rekomendasi_json`."
             )}], "is_error": True}
         cacat = _periksa_catatan_vs_temuan(folder)
         if cacat:
@@ -1303,7 +1459,16 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
             for pesan in _susun_lhe(outs[-1], folder, skill, rl):
                 warn_d += f"|WARNING:{pesan}"
 
-    if _slug(skill).startswith("pemantauan"):
+    if _slug(skill) == "pemantauan-umum":
+        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
+                      key=lambda f: f.stat().st_mtime)
+        if outs:
+            from app.lhr_narasi import _parse_context
+            rl = (args.get("ruang_lingkup")
+                  or _parse_context(folder / "context.md").get("ruang_lingkup") or "")
+            for pesan in _susun_lhpemantauan(outs[-1], folder, rl):
+                warn_d += f"|WARNING:{pesan}"
+    elif _slug(skill).startswith("pemantauan"):
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
                       key=lambda f: f.stat().st_mtime)
         if outs and not _betulkan_periode(outs[-1], folder):
