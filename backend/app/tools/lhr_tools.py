@@ -529,6 +529,64 @@ _TANPA_KLASIFIKASI = (
 # lurus, dan unsurnya dirangkai kalimat penyambung — enak dibaca pimpinan dan
 # objek audit, bukan format kertas kerja yang ditempel.
 
+def _periksa_catatan_vs_temuan(folder: Path) -> str | None:
+    """Pastikan catatan laporan = temuan kertas kerja. Return pesan galat / None.
+
+    PEMBAGIAN PERAN (arahan auditor 27 Agu 2026): temuan dibuat ANGGOTA TIM di
+    kertas kerja; KETUA TIM merangkainya jadi laporan dan menyusun rekomendasi.
+    Ketua Tim boleh mengubah KATA-KATANYA — itu memang tugasnya — tetapi TIDAK
+    boleh mengubah DAFTAR temuannya.
+
+    Sebelum pemeriksaan ini, bab Hasil pada jalur narasi diisi persis apa yang
+    ditulis agen: temuan karangan bisa terbit di laporan resmi, dan temuan asli
+    bisa hilang, tanpa satu pun peringatan. Terbukti lewat percobaan pada
+    penugasan nyata 27 Agu 2026.
+
+    Catatan ber-`jenis: positif` DIKECUALIKAN: itu pernyataan kepatuhan atas
+    sasaran yang tidak bertemuan, bukan temuan.
+    """
+    kkp = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    temuan = kkp.get("temuan") or []
+    if not temuan:
+        return None  # tak ada kertas kerja untuk dibandingkan
+    sah = {str(t.get("id_temuan") or "").strip() for t in temuan}
+    sah.discard("")
+
+    catatan = (safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan") or []
+    dipakai: set[str] = set()
+    tanpa_sumber: list[str] = []
+    asing: list[str] = []
+    for c in catatan:
+        if str(c.get("jenis") or "catatan").lower().startswith("pos"):
+            continue
+        idt = str(c.get("id_temuan") or "").strip()
+        judul = str(c.get("judul") or "")[:60]
+        if not idt:
+            tanpa_sumber.append(judul)
+        elif idt not in sah:
+            asing.append(f"{idt} ({judul})")
+        else:
+            dipakai.add(idt)
+
+    hilang = sorted(sah - dipakai)
+    galat: list[str] = []
+    if tanpa_sumber:
+        galat.append("catatan tanpa `id_temuan`: " + "; ".join(tanpa_sumber))
+    if asing:
+        galat.append("id_temuan tidak ada di kertas kerja: " + "; ".join(asing))
+    if hilang:
+        galat.append("temuan kertas kerja belum dinarasikan: " + ", ".join(hilang))
+    if not galat:
+        return None
+    return (
+        "Catatan laporan tidak cocok dengan temuan kertas kerja. " + " | ".join(galat)
+        + ". Temuan dibuat Anggota Tim; tugasmu MERANGKAI temuan itu jadi laporan dan "
+        "menyusun rekomendasi — bukan menambah temuan baru atau menghilangkan yang ada. "
+        "Kamu bebas menyusun ulang kalimatnya, tapi daftar temuannya harus sama persis "
+        "dengan `_KKP/temuan.json` (cek lewat `read_temuan_json`)."
+    )
+
+
 def _daftar(nilai) -> list[str]:
     """Terima list ATAU teks berbaris; kembalikan daftar butir bersih."""
     if isinstance(nilai, list):
@@ -663,6 +721,54 @@ def _tulis_ulang_hasil_audit(docx_path: Path, folder: Path) -> bool:
     return True
 
 
+def _tulis_ulang_rekomendasi(docx_path: Path, folder: Path) -> bool:
+    """Bab Rekomendasi memuat rekomendasinya saja, tanpa mengulang judul temuan.
+
+    V6 mencetak "T-001. <judul temuan>" sebagai kepala tiap butir, sehingga bab
+    Rekomendasi terbaca seperti pengulangan bab Hasil Audit. LHA Inspektorat II
+    yang sesungguhnya langsung menomori rekomendasinya.
+    """
+    from copy import deepcopy
+
+    from docx.text.paragraph import Paragraph
+
+    rek = safe_read_json(folder / "_LHP" / "rekomendasi.json") or {}
+    kkp = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    butir: list[str] = []
+    for t in (kkp.get("temuan") or []):
+        nilai = rek.get(str(t.get("id_temuan") or ""))
+        if isinstance(nilai, dict):
+            nilai = nilai.get("rekomendasi")
+        nilai = str(nilai or "").strip()
+        if nilai:
+            butir.append(nilai)
+    if not butir:
+        return False
+
+    doc = Document(str(docx_path))
+    par = doc.paragraphs
+    awal = next((k for k, x in enumerate(par)
+                 if x.text.strip().startswith("Berdasarkan hasil audit, Tim merekomendasikan")),
+                None)
+    akhir = next((k for k in range(awal + 1, len(par))
+                  if par[k].text.strip() == "BAB V"), None) if awal is not None else None
+    if awal is None or akhir is None:
+        return False
+    donor = par[awal]
+    for i, teks in enumerate(butir, 1):
+        baru = deepcopy(donor._p)
+        par[akhir]._p.addprevious(baru)
+        salinan = Paragraph(baru, donor._parent)
+        _set_para(salinan, f"{i}. {teks}")
+        for r in salinan.runs:
+            r.bold = False
+            r.italic = False
+    for k in range(awal + 1, akhir):
+        par[k]._p.getparent().remove(par[k]._p)
+    doc.save(str(docx_path))
+    return True
+
+
 def _awali_ruang_lingkup(docx_path: Path) -> bool:
     """Bab Ruang Lingkup dibuka "Ruang lingkup audit adalah ..." (arahan auditor)."""
     doc = Document(str(docx_path))
@@ -787,15 +893,18 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     laporan — persis kelas cacat yang tidak boleh ada di produk audit.
     (Ditambahkan 9 Agu 2026; sebelumnya overlay hanya ada di jalur KKP.)
     """
-    if _slug(args.get("skill") or "") == "audit-umum" and not (
-            safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan"):
-        return {"content": [{"type": "text", "text": (
-            "FAILED|narasi bab Hasil Audit belum ada. Panggil `write_narasi_laporan` "
-            "lebih dulu: tiap `catatan` memuat judul + `narasi` (uraian KONDISI, boleh "
-            "berbutir/kronologis) + `kriteria` + `sebab` + `akibat`, dan boleh disertai "
-            "`tabel` untuk rincian. Susun ulang dari temuan.json — JANGAN salin mentah "
-            "satu kolom kertas kerja jadi satu paragraf."
-        )}], "is_error": True}
+    if _slug(args.get("skill") or "") == "audit-umum":
+        if not (safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan"):
+            return {"content": [{"type": "text", "text": (
+                "FAILED|narasi bab Hasil Audit belum ada. Panggil `write_narasi_laporan` "
+                "lebih dulu: tiap `catatan` memuat `id_temuan` + judul + `narasi` (uraian "
+                "KONDISI, boleh berbutir/kronologis) + `kriteria` + `sebab` + `akibat`, "
+                "dan boleh disertai `tabel` untuk rincian. Susun ulang dari temuan.json — "
+                "JANGAN salin mentah satu kolom kertas kerja jadi satu paragraf."
+            )}], "is_error": True}
+        cacat = _periksa_catatan_vs_temuan(folder)
+        if cacat:
+            return {"content": [{"type": "text", "text": f"FAILED|{cacat}"}], "is_error": True}
 
     if _slug(args.get("skill") or "") in ("reviu-pengadaan", "reviu-umum"):
         return {"content": [{"type": "text", "text": (
@@ -874,6 +983,8 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
         if outs:
             if not _tulis_ulang_hasil_audit(outs[-1], folder):
                 warn_d += "|WARNING:bab Hasil Audit gagal ditulis ulang (penanda tak ditemukan)"
+            if not _tulis_ulang_rekomendasi(outs[-1], folder):
+                warn_d += "|WARNING:bab Rekomendasi gagal ditulis ulang"
             _awali_ruang_lingkup(outs[-1])
             _hentikan_kop(outs[-1])
 
@@ -1064,6 +1175,10 @@ async def render_lhr_narasi(args: dict) -> dict:
                              "FAILED|gambaran_umum kosong/placeholder. Susun 3–5 kalimat "
                              "substantif (obyek, nilai HPS, metode, periode) lalu render ulang."}],
                 "is_error": True}
+    cacat = _periksa_catatan_vs_temuan(folder)
+    if cacat:
+        return {"content": [{"type": "text", "text": f"FAILED|{cacat}"}], "is_error": True}
+
     try:
         ok, pesan, out = _render_narasi(folder, args)
     except Exception as e:  # noqa: BLE001 — laporkan apa adanya ke agen

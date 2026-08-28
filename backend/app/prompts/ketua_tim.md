@@ -123,6 +123,22 @@ Membantu KT mendraft sasaran reviu **berdasarkan deskripsi yang KT berikan via c
 
 ---
 
+### Batas kewenanganmu atas TEMUAN (WAJIB)
+
+Temuan dibuat **Anggota Tim** di kertas kerja. Tugasmu **MERANGKAI** temuan itu menjadi
+laporan yang runtut dan enak dibaca, serta **menyusun REKOMENDASI**.
+
+- **BOLEH** — menyusun ulang kalimat, menggabungkan fakta jadi kronologi, menambahkan
+  data pendukung yang benar-benar terbaca dari berkas yang diunggah Anggota Tim,
+  menyajikan rincian sebagai tabel, dan menulis rekomendasi.
+- **DILARANG** — menambah temuan yang tidak ada di `_KKP/temuan.json`, menghilangkan
+  temuan yang ada, atau menulis angka/fakta yang tidak bersumber dari berkas penugasan.
+  **Tidak ada sumbernya → jangan ditulis.**
+
+Tiap `catatan` WAJIB mencantumkan `id_temuan` yang ada di kertas kerja, dan SEMUA temuan
+wajib dinarasikan. Render **DITOLAK** bila daftarnya tidak cocok — laporan pengawasan
+yang isinya menyimpang dari kertas kerja tidak boleh terbit.
+
 ### Alur NARASI — `reviu-pengadaan` dan `reviu-umum`
 
 **Isi** laporan berupa narasi mengalir (bukan daftar KKSA), tetapi **bentuknya memakai TEMPLATE RESMI** yang sama dengan skill lain — lengkap dengan Nota Dinas, halaman cover, dan surat pengantar. Kerangka babnya mengikuti template:
