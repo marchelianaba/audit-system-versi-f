@@ -521,6 +521,133 @@ _TANPA_KLASIFIKASI = (
 )
 
 
+# ── Bab Hasil Audit (audit-umum) ─────────────────────────────────────────────
+# V6 mencetak bab ini dalam bentuk kertas kerja: dikelompokkan per sasaran
+# ("F.1. Memastikan ..."), lalu tiap temuan diurai dengan label telanjang
+# "Kondisi:/Kriteria:/Sebab:/Akibat:". Auditor menghendaki bentuk yang dipakai
+# LHA Inspektorat II sesungguhnya (27 Agu 2026): langsung ke temuan, dinomori
+# lurus, dan unsurnya dirangkai kalimat penyambung — enak dibaca pimpinan dan
+# objek audit, bukan format kertas kerja yang ditempel.
+
+def _kecilkan_awal(teks: str) -> str:
+    """Sambung akibat ke "Hal tersebut mengakibatkan ..." tanpa huruf besar nyempil."""
+    teks = teks.strip()
+    if not teks:
+        return ""
+    # Jangan kecilkan singkatan/nama diri yang memang berhuruf besar semua.
+    if len(teks) > 1 and teks[1].isupper():
+        return teks
+    return teks[0].lower() + teks[1:]
+
+
+def _butir(teks: str) -> list[str]:
+    """Pecah kriteria/sebab bernomor jadi butir; kalau tunggal, kembalikan apa adanya."""
+    baris = [b.strip(" -•\t") for b in str(teks or "").split("\n") if b.strip()]
+    return baris or []
+
+
+def _blok_hasil_audit(folder: Path) -> list[tuple[str, bool]] | None:
+    """Susun isi bab Hasil Audit. Return [(teks, tebal)] atau None bila tak ada temuan."""
+    data = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    temuan = data.get("temuan") or []
+    if not temuan:
+        return None
+    blok: list[tuple[str, bool]] = []
+    for i, t in enumerate(temuan, 1):
+        judul = str(t.get("judul_temuan") or f"Temuan {i}").strip()
+        blok.append((f"{i}. {judul}", True))
+        blok.append(("Kondisi", True))
+        kondisi = str(t.get("kondisi") or "").strip()
+        for b in (_butir(kondisi) or [kondisi]):
+            if b:
+                blok.append((b, False))
+        kriteria = _butir(t.get("kriteria"))
+        if kriteria:
+            blok.append(("Kondisi tersebut tidak sesuai dengan:", False))
+            for j, b in enumerate(kriteria, 1):
+                blok.append((b if len(kriteria) == 1 else f"{j}. {b}", False))
+        sebab = _butir(t.get("sebab"))
+        if sebab:
+            blok.append(("Hal tersebut disebabkan:", False))
+            for j, b in enumerate(sebab, 1):
+                blok.append((b if len(sebab) == 1 else f"{j}. {b}", False))
+        akibat = str(t.get("akibat") or "").strip()
+        if akibat:
+            blok.append((f"Hal tersebut mengakibatkan {_kecilkan_awal(akibat)}", False))
+    return blok
+
+
+def _tulis_ulang_hasil_audit(docx_path: Path, folder: Path) -> bool:
+    """Ganti isi bab Hasil Audit dengan bentuk mengalir. Return berhasil?"""
+    from copy import deepcopy
+
+    from docx.text.paragraph import Paragraph
+
+    blok = _blok_hasil_audit(folder)
+    if not blok:
+        return False
+    doc = Document(str(docx_path))
+    par = doc.paragraphs
+    awal = next((k for k, x in enumerate(par)
+                 if x.text.strip().startswith("Berdasarkan audit yang telah dilakukan")), None)
+    akhir = next((k for k in range(awal + 1, len(par))
+                  if par[k].text.strip() == "BAB IV"), None) if awal is not None else None
+    if awal is None or akhir is None:
+        return False
+
+    donor = par[awal]
+    for teks, tebal in blok:
+        baru = deepcopy(donor._p)
+        par[akhir]._p.addprevious(baru)
+        salinan = Paragraph(baru, donor._parent)
+        _set_para(salinan, teks)
+        for r in salinan.runs:
+            r.bold = tebal
+            r.italic = False
+    for k in range(awal + 1, akhir):
+        par[k]._p.getparent().remove(par[k]._p)
+    doc.save(str(docx_path))
+    return True
+
+
+def _awali_ruang_lingkup(docx_path: Path) -> bool:
+    """Bab Ruang Lingkup dibuka "Ruang lingkup audit adalah ..." (arahan auditor)."""
+    doc = Document(str(docx_path))
+    par = doc.paragraphs
+    i = next((k for k, x in enumerate(par)
+              if x.text.strip() == "Ruang Lingkup Audit"), None)
+    if i is None or i + 1 >= len(par):
+        return False
+    isi = par[i + 1].text.strip()
+    if not isi or isi.lower().startswith("ruang lingkup"):
+        return False
+    _set_para(par[i + 1], f"Ruang lingkup audit adalah {_kecilkan_awal(isi)}")
+    doc.save(str(docx_path))
+    return True
+
+
+def _hentikan_kop(docx_path: Path) -> bool:
+    """Kop hanya di Nota Dinas dan halaman sampul, tidak di halaman isi.
+
+    Templat sudah memutus tautan header pada seksi isi, tetapi pemutus itu
+    menempel pada paragraf penanda yang DIBUANG perender — ikut hilang, sehingga
+    kop terbawa sampai halaman terakhir. Dipasang ulang di sini.
+    """
+    doc = Document(str(docx_path))
+    if len(doc.sections) < 3:
+        return False
+    ubah = False
+    for sec in doc.sections[2:]:
+        if sec.header.is_linked_to_previous:
+            sec.header.is_linked_to_previous = False
+            for par in sec.header.paragraphs:
+                _set_para(par, "")
+            ubah = True
+    if ubah:
+        doc.save(str(docx_path))
+    return ubah
+
+
 def _betulkan_periode(docx_path: Path, folder: Path) -> bool:
     """Isi bab Periode pada laporan pemantauan dari context.md.
 
@@ -678,6 +805,15 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     # Bab D: ganti daftar centang V6 dengan narasi. Kegagalan JANGAN ditelan —
     # tanpa penanaman ini bab D terbit sebagai placeholder "[DIISI ...]".
     warn_d = ""
+    if _slug(skill) == "audit-umum":
+        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
+                      key=lambda f: f.stat().st_mtime)
+        if outs:
+            if not _tulis_ulang_hasil_audit(outs[-1], folder):
+                warn_d += "|WARNING:bab Hasil Audit gagal ditulis ulang (penanda tak ditemukan)"
+            _awali_ruang_lingkup(outs[-1])
+            _hentikan_kop(outs[-1])
+
     if _slug(skill).startswith("pemantauan"):
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
                       key=lambda f: f.stat().st_mtime)
