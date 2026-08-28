@@ -1316,6 +1316,26 @@ def _susun_lhr_rkakl(docx_path: Path, folder: Path, args: dict) -> list[str]:
     return warn
 
 
+def _penanda_tersisa(docx_path: Path) -> list[str]:
+    """Penanda {{...}} yang tak terisi pada laporan jadi.
+
+    Jaring pengaman umum untuk ketidakcocokan TEMPLAT vs KODE. Templat dibaca
+    dari disk tiap render, sedangkan kode hidup di proses backend — mengubah
+    templat tanpa memuat ulang backend membuat laporan terbit dengan penanda
+    mentah, dan tidak ada satu pun pesan galat. Terjadi 28 Agu 2026: templat
+    RKA-K/L yang baru dipakai backend berkode lama, sehingga LHR terbit berisi
+    "{{RE_RKAKL}}" dan kawan-kawan.
+    """
+    doc = Document(str(docx_path))
+    teks = [x.text for x in doc.paragraphs]
+    for t in doc.tables:
+        for r in t.rows:
+            for c in r.cells:
+                teks.append(c.text)
+    pola = "\\{\\{[A-Z0-9_]+\\}\\}"
+    return sorted(set(re.findall(pola, "\n".join(teks))))
+
+
 async def _render_kksa(folder: Path, args: dict) -> dict:
     """Render LHP paradigma KKSA via render_lhp.py V6 (placeholder {{...}}).
 
@@ -1471,6 +1491,15 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
         if outs:
             for pesan in _susun_lhr_rkakl(outs[-1], folder, args):
                 warn_d += f"|WARNING:{pesan}"
+
+    outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
+                  key=lambda f: f.stat().st_mtime)
+    if outs:
+        sisa = _penanda_tersisa(outs[-1])
+        if sisa:
+            warn_d += (f"|WARNING:penanda belum terisi di laporan: {', '.join(sisa)}. "
+                       f"Biasanya templat dan kode tidak sepadan — muat ulang backend, "
+                       f"atau lengkapi data sumbernya.")
 
     # A1: sesuaikan judul/kata + nama file per jenis (LHA/LHR/LHE/LP).
     final_name = _finalize_jenis(folder, skill)
