@@ -721,6 +721,286 @@ def _tulis_ulang_hasil_audit(docx_path: Path, folder: Path) -> bool:
     return True
 
 
+# ── LHE evaluasi-umum ────────────────────────────────────────────────────────
+# Keluaran evaluasi berlapis dua (SKILL.md "Kerangka Penilaian"): penilaian
+# BERSKOR per dimensi -> skor total + predikat, DAN temuan K/K/S/A untuk hal
+# yang membutuhkan rekomendasi sistem. Bab E memuat lapis pertama, bab F lapis
+# kedua — keduanya berbeda peran, bukan kembar.
+#
+# Skor dibaca LANGSUNG dari `_KKP/penilaian-lke-<skill>.json`. Penerjemah skor
+# di V6 sengaja TIDAK dipakai: ia hanya mengenali tujuh nama komponen baku
+# SAKIP/SPIP dan MEMBUANG dimensi bernama lain tanpa pesan — sedangkan dimensi
+# evaluasi-umum diturunkan bebas dari kriteria yang diunggah auditor.
+
+def _baca_lke(folder: Path, skill: str) -> dict:
+    """Rekap skor per dimensi apa adanya (tanpa pemetaan nama baku)."""
+    d = safe_read_json(folder / "_KKP" / f"penilaian-lke-{_slug(skill)}.json")
+    return d if isinstance(d, dict) else {}
+
+
+def _komponen_lke(lke: dict) -> list[dict]:
+    komp = lke.get("komponen")
+    return [k for k in komp if isinstance(k, dict) and str(k.get("nama") or "").strip()] \
+        if isinstance(komp, list) else []
+
+
+def _nilai_komponen(k: dict):
+    """Nilai APIP diutamakan — laporan ini produk penjaminan, bukan penilaian mandiri."""
+    for kunci in ("nilai_apip", "nilai", "nilai_pm"):
+        if k.get(kunci) is not None:
+            return k[kunci]
+    return None
+
+
+def _blok_e1_skor(lke: dict) -> list[tuple] | None:
+    """E.1 — tabel rekapitulasi skor per dimensi."""
+    komp = _komponen_lke(lke)
+    if not komp:
+        return None
+    baris = []
+    for k in komp:
+        nilai = _nilai_komponen(k)
+        bobot = k.get("bobot")
+        persen = ""
+        try:
+            if bobot not in (None, "", 0) and nilai is not None:
+                persen = f"{float(nilai) / float(bobot) * 100:.2f}".replace(".", ",")
+        except (TypeError, ValueError, ZeroDivisionError):
+            persen = ""
+        baris.append([str(k.get("nama") or ""), _teks_angka(bobot), _teks_angka(nilai),
+                      persen, str(k.get("predikat") or "")])
+    total = _total_lke(lke)
+    if total.get("nilai") is not None:
+        baris.append(["Jumlah", _teks_angka(_total_bobot(komp)),
+                      _teks_angka(total["nilai"]), "", str(total.get("predikat") or "")])
+    return [("tabel", "", ["Dimensi", "Bobot", "Skor", "% Capaian", "Predikat"], baris)]
+
+
+def _teks_angka(nilai) -> str:
+    if nilai is None or nilai == "":
+        return ""
+    if isinstance(nilai, (int, float)):
+        teks = f"{nilai:.2f}".rstrip("0").rstrip(".")
+        return teks.replace(".", ",")
+    return str(nilai)
+
+
+def _total_bobot(komp: list[dict]):
+    jml = 0.0
+    ada = False
+    for k in komp:
+        try:
+            jml += float(k.get("bobot"))
+            ada = True
+        except (TypeError, ValueError):
+            continue
+    return jml if ada else None
+
+
+def _total_lke(lke: dict) -> dict:
+    for kunci in ("total_apip", "total", "total_pm"):
+        nilai = lke.get(kunci)
+        if isinstance(nilai, dict):
+            return nilai
+        if nilai is not None:
+            return {"nilai": nilai, "predikat": lke.get("predikat_akhir") or ""}
+    return {}
+
+
+def _blok_e2_predikat(lke: dict) -> list[tuple] | None:
+    """E.2 — predikat keseluruhan."""
+    total = _total_lke(lke)
+    nilai, predikat = total.get("nilai"), str(total.get("predikat") or "").strip()
+    if nilai is None and not predikat:
+        return None
+    kal = "Berdasarkan rekapitulasi skor seluruh dimensi, objek evaluasi memperoleh "
+    kal += f"nilai {_teks_angka(nilai)}" if nilai is not None else "penilaian"
+    if predikat:
+        kal += f" dengan predikat {predikat}"
+    tafsir = str(total.get("interpretasi") or "").strip()
+    return [("p", kal.rstrip(".") + ".", False)] + ([("p", tafsir, False)] if tafsir else [])
+
+
+def _blok_e3_analisis(lke: dict) -> list[tuple] | None:
+    """E.3 — analisis PER DIMENSI (bukan daftar temuan; itu bab F)."""
+    komp = _komponen_lke(lke)
+    if not komp:
+        return None
+    blok: list[tuple] = []
+    for i, k in enumerate(komp, 1):
+        nama = str(k.get("nama") or "").strip()
+        nilai, bobot = _nilai_komponen(k), k.get("bobot")
+        kal = f"{i}. {nama}"
+        blok.append(("p", kal, True))
+        rinci = "Dimensi ini memperoleh skor " + _teks_angka(nilai) if nilai is not None else ""
+        if rinci and bobot not in (None, ""):
+            rinci += f" dari bobot {_teks_angka(bobot)}"
+        pred = str(k.get("predikat") or "").strip()
+        if rinci and pred:
+            rinci += f" dengan predikat {pred}"
+        if rinci:
+            blok.append(("p", rinci.rstrip(".") + ".", False))
+        catatan = str(k.get("catatan") or "").strip()
+        if catatan:
+            blok.append(("p", catatan, False))
+    return blok
+
+
+def _blok_f_temuan(folder: Path) -> list[tuple] | None:
+    """F — temuan K/K/S/A bernarasi, kerangka sama dengan bab Hasil Audit."""
+    return _blok_hasil_audit(folder)
+
+
+def _blok_g_rekomendasi(folder: Path) -> list[tuple] | None:
+    """G — rekomendasi saja, tanpa mengulang judul temuan."""
+    rek = safe_read_json(folder / "_LHP" / "rekomendasi.json") or {}
+    kkp = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    butir = []
+    for t in (kkp.get("temuan") or []):
+        nilai = rek.get(str(t.get("id_temuan") or ""))
+        if isinstance(nilai, dict):
+            nilai = nilai.get("rekomendasi")
+        nilai = str(nilai or "").strip()
+        if nilai:
+            butir.append(nilai)
+    return [("p", f"{i}. {b}", False) for i, b in enumerate(butir, 1)] or None
+
+
+def _blok_h_simpulan(folder: Path, lke: dict) -> list[tuple] | None:
+    """H — bahasa simpulan yang ditetapkan SKILL: menyebut nilai dan predikat."""
+    total = _total_lke(lke)
+    nilai, predikat = total.get("nilai"), str(total.get("predikat") or "").strip()
+    if nilai is None and not predikat:
+        return None
+    ctx = _parse_context_ringkas(folder)
+    obyek = ctx or "objek evaluasi"
+    n = len((safe_read_json(folder / "_KKP" / "temuan.json") or {}).get("temuan") or [])
+    kal = f"Berdasarkan hasil evaluasi, {obyek} memperoleh nilai {_teks_angka(nilai)}"
+    if predikat:
+        kal += f" dengan predikat {predikat}"
+    kal += "."
+    if n:
+        kal += (f" Terdapat {n} ({_terbilang(n)}) catatan yang memerlukan perhatian dan "
+                f"tindak lanjut sebagaimana diuraikan pada bagian Rekomendasi.")
+    else:
+        kal += " Tidak terdapat catatan yang memerlukan tindak lanjut."
+    return [("p", kal, False)]
+
+
+def _parse_context_ringkas(folder: Path) -> str:
+    from app.lhr_narasi import _parse_context
+
+    return (_parse_context(folder / "context.md").get("obyek") or "").strip()
+
+
+def _ganti_antara(doc, awal: str, akhir: str, blok: list[tuple],
+                  buang_pengantar: bool = False) -> bool:
+    """Ganti isi di antara dua penanda dengan `blok`. Return berhasil?"""
+    from copy import deepcopy
+
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+    from docx.text.paragraph import Paragraph
+
+    par = doc.paragraphs
+    i = next((k for k, x in enumerate(par) if x.text.strip().startswith(awal)), None)
+    if i is None:
+        return False
+    j = next((k for k in range(i + 1, len(par))
+              if par[k].text.strip().startswith(akhir)), None)
+    if j is None:
+        return False
+    donor = par[i]
+    for item in blok:
+        if item[0] == "tabel":
+            _sisip_tabel(doc, par[j], item[1], item[2], item[3])
+            continue
+        baru = deepcopy(donor._p)
+        par[j]._p.addprevious(baru)
+        salinan = Paragraph(baru, donor._parent)
+        _set_para(salinan, item[1])
+        salinan.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        for r in salinan.runs:
+            r.bold = item[2]
+            r.italic = False
+            r.font.name = "Arial"
+            r.font.size = Pt(12)
+    buang = list(range(i + 1, j)) + ([i] if buang_pengantar else [])
+    for k in buang:
+        par[k]._p.getparent().remove(par[k]._p)
+    return True
+
+
+def _seragamkan(doc, dari: str, sampai: str) -> None:
+    """Samakan huruf & perataan antar-bab: Arial 12, justify."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+
+    par = doc.paragraphs
+    i = next((k for k, x in enumerate(par) if x.text.strip().startswith(dari)), None)
+    j = next((k for k, x in enumerate(par) if x.text.strip().startswith(sampai)), None)
+    if i is None or j is None:
+        return
+    for x in par[i:j]:
+        if not x.text.strip():
+            continue
+        if x.paragraph_format.alignment is None:
+            x.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        for r in x.runs:
+            r.font.name = "Arial"
+            if r.font.size is not None and r.font.size < Pt(12):
+                r.font.size = Pt(12)
+
+
+def _susun_lhe(docx_path: Path, folder: Path, skill: str, ruang_lingkup: str) -> list[str]:
+    """Susun bab B, C, E, F, G, H LHE evaluasi-umum. Return daftar peringatan."""
+    lke = _baca_lke(folder, skill)
+    doc = Document(str(docx_path))
+    warn: list[str] = []
+
+    # B — tujuan SAJA selama ini; ruang lingkup tak pernah muncul.
+    if ruang_lingkup:
+        par = doc.paragraphs
+        i = next((k for k, x in enumerate(par)
+                  if x.text.strip().startswith("B.  Tujuan")), None)
+        if i is not None and i + 1 < len(par):
+            sudah = any("uang lingkup" in x.text for x in par[i + 1:i + 4])
+            if not sudah:
+                from copy import deepcopy
+
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                from docx.shared import Pt
+                from docx.text.paragraph import Paragraph
+                baru = deepcopy(par[i + 1]._p)
+                par[i + 1]._p.addnext(baru)
+                sal = Paragraph(baru, par[i + 1]._parent)
+                _set_para(sal, f"Ruang lingkup evaluasi adalah {_kecilkan_awal(ruang_lingkup)}")
+                sal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                for r in sal.runs:
+                    r.bold = False
+                    r.italic = False
+                    r.font.name = "Arial"
+                    r.font.size = Pt(12)
+
+    for penanda, blok, awal, akhir in (
+            ("E.1", _blok_e1_skor(lke), "E.1", "E.2"),
+            ("E.2", _blok_e2_predikat(lke), "E.2", "E.3"),
+            ("E.3", _blok_e3_analisis(lke), "E.3", "F."),
+            ("F", _blok_f_temuan(folder), "Berdasarkan evaluasi yang dilaksanakan", "G."),
+            ("G", _blok_g_rekomendasi(folder), "Berdasarkan kondisi-kondisi tersebut", "H."),
+            ("H", _blok_h_simpulan(folder, lke), "H.  Simpulan", "I.")):
+        if not blok:
+            warn.append(f"bab {penanda} tidak terisi (sumber datanya kosong)")
+            continue
+        # Judul bab TIDAK pernah dibuang — hanya isinya yang diganti.
+        if not _ganti_antara(doc, awal, akhir, blok):
+            warn.append(f"bab {penanda} gagal disusun (penanda tak ditemukan)")
+
+    _seragamkan(doc, "A.  Dasar", "I.  Apresiasi")
+    doc.save(str(docx_path))
+    return warn
+
+
 def _tulis_ulang_rekomendasi(docx_path: Path, folder: Path) -> bool:
     """Bab Rekomendasi memuat rekomendasinya saja, tanpa mengulang judul temuan.
 
@@ -893,6 +1173,26 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
     laporan — persis kelas cacat yang tidak boleh ada di produk audit.
     (Ditambahkan 9 Agu 2026; sebelumnya overlay hanya ada di jalur KKP.)
     """
+    if _slug(args.get("skill") or "") == "evaluasi-umum":
+        if not (safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan"):
+            return {"content": [{"type": "text", "text": (
+                "FAILED|narasi bab Temuan belum ada. Panggil `write_narasi_laporan` lebih "
+                "dulu (tiap catatan: `id_temuan` + judul + `narasi` + `kriteria` + `sebab` "
+                "+ `akibat`, boleh bertabel)."
+            )}], "is_error": True}
+        cacat = _periksa_catatan_vs_temuan(folder)
+        if cacat:
+            return {"content": [{"type": "text", "text": f"FAILED|{cacat}"}], "is_error": True}
+        if not _komponen_lke(_baca_lke(folder, "evaluasi-umum")):
+            return {"content": [{"type": "text", "text": (
+                "FAILED|skor per dimensi belum ada. Evaluasi menghasilkan penilaian "
+                "BERSKOR (Dimensi -> Sub-aspek -> Indikator) yang direkap jadi skor total "
+                "dan predikat — itu inti LHE, dan bab Simpulan bergantung padanya. Minta "
+                "Anggota Tim mengisi `write_penilaian_lke(skill=\"evaluasi-umum\", "
+                "penilaian={komponen:[{nama, bobot, nilai_apip, predikat, catatan}], "
+                "total_apip, predikat_akhir})` lebih dulu."
+            )}], "is_error": True}
+
     if _slug(args.get("skill") or "") == "audit-umum":
         if not (safe_read_json(folder / "_LHP" / "narasi-laporan.json") or {}).get("catatan"):
             return {"content": [{"type": "text", "text": (
@@ -987,6 +1287,16 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
                 warn_d += "|WARNING:bab Rekomendasi gagal ditulis ulang"
             _awali_ruang_lingkup(outs[-1])
             _hentikan_kop(outs[-1])
+
+    if _slug(skill) == "evaluasi-umum":
+        outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
+                      key=lambda f: f.stat().st_mtime)
+        if outs:
+            from app.lhr_narasi import _parse_context
+            rl = (args.get("ruang_lingkup")
+                  or _parse_context(folder / "context.md").get("ruang_lingkup") or "")
+            for pesan in _susun_lhe(outs[-1], folder, skill, rl):
+                warn_d += f"|WARNING:{pesan}"
 
     if _slug(skill).startswith("pemantauan"):
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
