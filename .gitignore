@@ -79,3 +79,10 @@ digest-test-corpus/**/*.xls
 # Draft skill hasil Graduasi (work-in-progress, di-promote ke knowledge/skills/<nama>/
 # setelah reviu PT/PM — bukan source repo)
 knowledge/skills/_draft/
+
+# Cadangan kerja lokal saat menyunting kode/templat (jangan ikut ke repo)
+*.bak
+*.bak[0-9]
+*ASLI-backup*
+*PRE-*.docx
+*-LAMA.docx
