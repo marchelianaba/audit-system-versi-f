@@ -190,34 +190,43 @@ Rekomendasi: [Tindakan konkret: sesuaikan dengan SBM, lengkapi KAK,
 
 ## Format Output Laporan (LHR RKA-K/L)
 
-Enam aspek Pasal 61 adalah kerangka **KERJA** saat mereviu. **LAPORANNYA TIDAK disusun
-menurut aspek**, melainkan **per unit kerja lalu per Rincian Output** — mengikuti LHR
-Renja RKA-K/L Inspektorat II yang sesungguhnya.
-
 ```
-Ringkasan Eksekutif
-   [paragraf pembuka + daftar catatan berulang + REKOMENDASI]
-Dasar Hukum
-Tujuan Reviu
-Ruang Lingkup Reviu
-Metodologi Reviu
-Gambaran Umum
-   [pagu + tabel Program/Kegiatan/Output | Unit Pelaksana | Anggaran]
-Uraian Hasil Reviu
-   <Nama Direktorat/Unit Kerja>                     (tebal)
-      RO <Nama Rincian Output>
-         Ketidaksesuaian Format TOR
-            [tabel: No | Format (Komponen TOR) | Catatan]
-         Indikator Rincian Output belum menerapkan prinsip SMART
-            [paragraf penjelas]
-         Indikator belum memenuhi konsep cascading
-            [paragraf penjelas]
-Apresiasi
-```
+A. PENDAHULUAN
+   1. Latar Belakang dan Dasar Hukum (Pasal 61 PMK 107/2024)
+   2. Tujuan Reviu (keyakinan terbatas, kepatuhan kaidah penganggaran)
+   3. Ruang Lingkup (tahap reviu, unit kerja, tahun anggaran, total pagu)
+   4. Metodologi (desk review — penelaahan dokumen RKA-K/L)
+   5. Jangka Waktu dan Komposisi Tim
 
-**Tidak ada bab Simpulan maupun bab Rekomendasi tersendiri** — rekomendasi diletakkan di
-Ringkasan Eksekutif. Tiap temuan WAJIB memuat `unit_kerja` dan `ro` (nama Rincian Output,
-bukan nama berkas); tanpa keduanya temuan tidak punya tempat di laporan.
+B. GAMBARAN UMUM RKA-K/L
+   [Total pagu, jumlah Program/Kegiatan/Output, sumber dana,
+    perbandingan dengan pagu tahun sebelumnya jika relevan]
+
+C. HASIL REVIU
+   C.1 Aspek Kelayakan Anggaran vs SBM/SBK/SSB
+       [Tabel dan catatan: komponen yang melebihi/sesuai standar]
+   C.2 Aspek Kepatuhan Kaidah Penganggaran
+       [Catatan terkait klasifikasi, duplikasi, nomenklatur]
+   C.3 Aspek Penandaan Anggaran
+       [Status penandaan per keluaran]
+   C.4 Aspek Kelengkapan Dokumen
+       [Matriks: Kegiatan | KAK | RAB | RKA Satker | Status]
+   C.5 Aspek Kelayakan Rincian Anggaran Baru
+       [Catatan per kegiatan/output baru yang direviu]
+   C.6 Aspek Pengalokasian Tematik
+       [Verifikasi pemenuhan alokasi tematik]
+
+   [Catatan reviu lengkap: Judul → Kondisi → Kriteria → Sebab → Akibat → Rekomendasi]
+
+D. SIMPULAN
+   [Keyakinan terbatas — lihat panduan bahasa di bawah]
+
+E. REKOMENDASI
+   [Kompilasi rekomendasi, dikelompokkan per aspek dan prioritas]
+
+F. APRESIASI
+   [Hal-hal yang sudah baik — reviu ini preventif dan membangun]
+```
 
 ### Panduan Bahasa LHR
 
