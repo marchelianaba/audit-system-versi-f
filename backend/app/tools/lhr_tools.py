@@ -1210,11 +1210,356 @@ def _betulkan_periode(docx_path: Path, folder: Path) -> bool:
     return bool(n)
 
 
-def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str) -> list[str]:
-    """Tambal dua cacat reviu-rka-kl. Return catatan peringatan."""
+# ── Ringkasan Eksekutif & Dasar Hukum LHR reviu-rka-kl (lapisan app) ──────────
+# Template LHR reviu-rka-kl memuat dua penanda yang TIDAK dikenal V6:
+# {{RINGKASAN_EKSEKUTIF}} dan {{DASAR_HUKUM_LIST}}. V6 melewatkannya apa adanya;
+# keduanya diisi di sini SETELAH render, memakai data yang SAMA dengan badan
+# laporan (temuan yang disetujui + rekomendasi) supaya Ringkasan tidak memuat
+# temuan yang sudah ditolak auditor. Bentuk mengikuti contoh LHR Inspektorat II:
+# Arial 12, spasi 1,5, rata kiri-kanan.
+_DASAR_HUKUM_BAKU = (
+    "Peraturan Pemerintah Nomor 60 Tahun 2008 tentang Sistem Pengendalian Intern Pemerintah.",
+    "Peraturan Menteri Keuangan Nomor 107 Tahun 2024 tentang Perubahan atas Peraturan "
+    "Menteri Keuangan Nomor 62 Tahun 2023 tentang Perencanaan Anggaran, Pelaksanaan "
+    "Anggaran, serta Akuntansi dan Pelaporan Keuangan.",
+    "Peraturan Menteri Keuangan Nomor 41 Tahun 2026 tentang Perubahan Kedua atas "
+    "Peraturan Menteri Keuangan Nomor 62 Tahun 2023.",
+)
+
+
+def _dedup_urut(seq) -> list[str]:
+    keluar, terlihat = [], set()
+    for x in seq:
+        x = str(x or "").strip()
+        if x and x not in terlihat:
+            terlihat.add(x)
+            keluar.append(x)
+    return keluar
+
+
+def _isi_penanda_paragraf(doc, token: str, baris: list[tuple]) -> bool:
+    """Ganti paragraf ber-`token` dengan beberapa paragraf (Arial 12/1,5/justify).
+
+    `baris` = list of (teks, bold).
+    """
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Pt
+
+    anchor = next((p for p in doc.paragraphs if token in p.text), None)
+    if anchor is None:
+        return False
+    for teks, tebal in baris:
+        par = anchor.insert_paragraph_before(style=anchor.style)
+        pf = par.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf.line_spacing = 1.5
+        pf.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+        run = par.add_run(teks)
+        run.bold = tebal
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
+        rpr = run._element.get_or_add_rPr()
+        rf = rpr.find(qn("w:rFonts"))
+        if rf is None:
+            rf = OxmlElement("w:rFonts")
+            rpr.append(rf)
+        for a in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
+            rf.set(qn(a), "Arial")
+    anchor._element.getparent().remove(anchor._element)
+    return True
+
+
+def _isi_setelah_judul(doc, judul: str, baris: list[tuple]) -> bool:
+    """Sisipkan paragraf TEPAT SETELAH sebuah judul bab. Return berhasil?
+
+    Dipakai bila penanda `{{...}}` sudah lenyap sebelum lapisan app sempat
+    mengisinya. V6 punya jaring pengaman yang MENGOSONGKAN sejumlah penanda
+    (RINGKASAN_EKSEKUTIF, H_APRESIASI, E_GAMBARAN_UMUM) tepat sebelum menyimpan
+    berkas — niatnya baik (jangan ada `{{...}}` mentah di laporan), tapi
+    akibatnya bab Ringkasan Eksekutif terbit KOSONG karena penandanya sudah
+    hilang saat kita mencarinya. Menyandar pada judul bab kebal terhadap itu.
+    """
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+    from docx.shared import Pt
+
+    kepala = next((x for x in doc.paragraphs if x.text.strip() == judul), None)
+    if kepala is None:
+        return False
+    sesudah = kepala
+    for teks, tebal in baris:
+        par = sesudah.insert_paragraph_before(style=kepala.style)
+        # insert_paragraph_before menyisipkan SEBELUM `sesudah`; supaya urutannya
+        # benar, pindahkan elemen baru ke posisi tepat setelah paragraf terakhir.
+        kepala._element.addnext(par._element) if sesudah is kepala else             sesudah._element.addnext(par._element)
+        pf = par.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf.line_spacing = 1.5
+        pf.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+        run = par.add_run(teks)
+        run.bold = tebal
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
+        sesudah = par
+    return True
+
+
+def _kumpulkan_ringkasan_rkakl(folder: Path, anotasi: dict) -> tuple[list[str], list[str]]:
+    """Judul catatan (temuan DISETUJUI) + teks rekomendasi untuk Ringkasan Eksekutif.
+
+    Menghormati keputusan HITL: temuan ber-status REJECTED dibuang dan koreksi
+    judul auditor diterapkan — sama seperti yang dipakai saat merender badan
+    laporan, supaya Ringkasan tidak menyebut temuan yang sudah ditolak.
+    """
+    data = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    temuan = data.get("temuan") or []
+    judul_catatan: list[str] = []
+    id_dipakai: list[str] = []
+    for t in temuan:
+        if not isinstance(t, dict):
+            continue
+        tid = t.get("id_temuan")
+        a = (anotasi or {}).get(tid) or {}
+        if str(a.get("status") or "").upper() == "REJECTED":
+            continue
+        edits = a.get("edits") or {}
+        judul = (edits.get("judul_temuan") or edits.get("judul")
+                 or t.get("judul_temuan") or t.get("judul") or "").strip()
+        if judul:
+            judul_catatan.append(judul)
+            id_dipakai.append(tid)
+    rek = safe_read_json(folder / "_LHP" / "rekomendasi.json") or {}
+    rekom_texts: list[str] = []
+    if isinstance(rek, dict):
+        for tid in id_dipakai:
+            nilai = rek.get(tid)
+            if isinstance(nilai, dict):
+                nilai = nilai.get("rekomendasi")
+            if str(nilai or "").strip():
+                rekom_texts.append(str(nilai).strip())
+    return _dedup_urut(judul_catatan), _dedup_urut(rekom_texts)
+
+
+def _blok_ringkasan_rkakl(judul: str, catatan: list[str], rekom: list[str]) -> list[tuple]:
+    blok = [
+        ("RKA-K/L adalah dokumen rencana keuangan tahunan Kementerian/Lembaga yang "
+         "disusun menurut Bagian Anggaran Kementerian/Lembaga.", False),
+        (f"Inspektorat II melakukan {judul} untuk memberikan keyakinan terbatas "
+         "(limited assurance) atas kesesuaian penyusunan anggaran terhadap kaidah "
+         "penganggaran yang berlaku.", False),
+    ]
+    if catatan:
+        blok.append(("Berdasarkan hasil reviu, dapat disimpulkan bahwa sebagian dokumen "
+                     "TOR yang disusun belum sesuai format, dengan catatan sebagai berikut:",
+                     False))
+        blok += [("•  " + c, False) for c in catatan]
+        if rekom:
+            blok.append(("Inspektorat II merekomendasikan perbaikan sebagai berikut:", False))
+            blok += [(f"{i}. {r}", False) for i, r in enumerate(rekom, 1)]
+    else:
+        blok.append(("Berdasarkan hasil reviu secara terbatas, tidak terdapat hal-hal yang "
+                     "membuat kami yakin bahwa perencanaan anggaran tidak disusun sesuai "
+                     "dengan kaidah penganggaran yang berlaku.", False))
+    return blok
+
+
+def _blok_dasar_hukum_rkakl(nomor_st: str, tanggal_st: str, nota_dinas: str) -> list[tuple]:
+    items = list(_DASAR_HUKUM_BAKU)
+    if str(nota_dinas or "").strip():
+        items.append(str(nota_dinas).strip().rstrip(".") + ".")
+    if str(nomor_st or "").strip():
+        st = f"Surat Tugas Inspektur II Nomor {nomor_st}"
+        if str(tanggal_st or "").strip():
+            st += f" tanggal {tanggal_st}"
+        items.append(st.rstrip(".") + ".")
+    return [(f"{i}. {x}", False) for i, x in enumerate(items, 1)]
+
+
+def _temuan_disetujui_rkakl(folder: Path, anotasi: dict) -> list[dict]:
+    """Temuan yang DISETUJUI (REJECTED dibuang, koreksi auditor diterapkan)."""
+    data = safe_read_json(folder / "_KKP" / "temuan.json") or {}
+    hasil: list[dict] = []
+    for t in data.get("temuan") or []:
+        if not isinstance(t, dict):
+            continue
+        a = (anotasi or {}).get(t.get("id_temuan")) or {}
+        if str(a.get("status") or "").upper() == "REJECTED":
+            continue
+        hasil.append({**t, **(a.get("edits") or {})})
+    return hasil
+
+
+def _teks_gabung(nilai) -> str:
+    """Rangkai field yang bisa berupa list ATAU teks berbaris jadi satu kalimat."""
+    if isinstance(nilai, list):
+        return " ".join(str(x).strip() for x in nilai if str(x).strip())
+    return str(nilai or "").strip()
+
+
+def _seragamkan_badan_rkakl(doc, dari: str, sampai: str) -> int:
+    """Samakan bentuk badan LHR: Arial 12, rata kiri-kanan, spasi 1,5.
+
+    Butir bab Rekomendasi terbit Arial 10 rata kiri karena pembangunnya di V6
+    menyetel `size: 10` dan tidak menyetel perataan; beberapa isi bab lain juga
+    tidak ber-perataan. Diseragamkan di sini karena V6 baca-saja. Ketebalan
+    (bold) TIDAK diubah — judul dan sub-judul tetap tebal.
+    """
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+    from docx.shared import Pt
+
+    par = doc.paragraphs
+    i = next((k for k, x in enumerate(par) if x.text.strip() == dari), None)
+    j = next((k for k, x in enumerate(par) if x.text.strip() == sampai), None)
+    if i is None or j is None or j < i:
+        return 0
+    n = 0
+    for x in par[i:j + 1]:
+        if not x.text.strip():
+            continue
+        pf = x.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf.line_spacing = 1.5
+        pf.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+        for r in x.runs:
+            r.font.name = "Arial"
+            r.font.size = Pt(12)
+        n += 1
+    return n
+
+
+def _aspek_tak_tersimpulkan(folder: Path) -> list[dict]:
+    """Aspek berkesimpulan TIDAK_CUKUP_DATA di kertas kerja.
+
+    Aspek semacam ini TIDAK menghasilkan temuan, sehingga tanpa penanganan
+    khusus ia lenyap dari laporan — padahal justru itu batas cakupan reviu.
+    Terbukti pada penugasan RKA-K/L nyata: 4 dari 9 aspek tidak dapat
+    disimpulkan, dua di antaranya (konsistensi TOR-RAB dan kewajaran biaya)
+    adalah inti sasaran penugasan, dan laporan sama sekali tidak menyebutnya.
+    Simpulan pun berbunyi seolah reviu tuntas. (Ditemukan 30 Agu 2026.)
+    """
+    d = safe_read_json(folder / "_KKP" / "penilaian-aspek.json") or {}
+    rows = d.get("aspek") if isinstance(d, dict) else None
+    return [r for r in (rows or [])
+            if isinstance(r, dict)
+            and str(r.get("kesimpulan") or "").strip().upper() == "TIDAK_CUKUP_DATA"
+            and str(r.get("aspek") or "").strip()]
+
+
+def _blok_batas_cakupan(aspek: list[dict]) -> list[tuple]:
+    """Bagian penutup Uraian Hasil Reviu: aspek yang belum dapat disimpulkan."""
+    if not aspek:
+        return []
+    n = len(aspek)
+    blok: list[tuple] = [
+        (f"Terdapat {n} ({_terbilang(n)}) aspek yang belum dapat disimpulkan dalam "
+         f"reviu ini karena keterbatasan data, dengan uraian sebagai berikut:", False),
+    ]
+    for i, r in enumerate(aspek, 1):
+        nama = str(r.get("aspek") or "").strip()
+        blok.append((f"{i}. {nama}", True))
+        dasar = _teks_gabung(r.get("dasar"))
+        if dasar:
+            blok.append((dasar, False))
+    blok.append(("Keterbatasan tersebut merupakan batas cakupan reviu: atas aspek-aspek "
+                 "di atas, Inspektorat II tidak memberikan keyakinan apa pun.", False))
+    return blok
+
+
+def _blok_hasil_reviu_rkakl(temuan: list[dict]) -> list[tuple]:
+    """Uraian Hasil Reviu — daftar catatan LANGSUNG, tanpa pengelompokan aspek.
+
+    Tiap catatan dirangkai mengalir dari unsur K/K/S/A kertas kerja. Rekomendasi
+    TIDAK dimasukkan di sini (disusun di bab Rekomendasi tersendiri).
+    """
+    if not temuan:
+        return [("Berdasarkan hasil reviu, tidak terdapat catatan yang perlu "
+                 "ditindaklanjuti.", False)]
+    blok: list[tuple] = [
+        (f"Berdasarkan hasil reviu, tim reviu menyampaikan {len(temuan)} catatan "
+         "sebagai berikut:", False)
+    ]
+    for i, t in enumerate(temuan, 1):
+        judul = (_teks_gabung(t.get("judul_temuan")) or _teks_gabung(t.get("judul"))
+                 or f"Catatan {i}")
+        blok.append((f"{i}. {judul}", True))
+        kondisi = _teks_gabung(t.get("kondisi"))
+        if kondisi:
+            blok.append((kondisi, False))
+        kriteria = _teks_gabung(t.get("kriteria"))
+        if kriteria:
+            blok.append(("Kondisi tersebut tidak sesuai dengan: " + kriteria, False))
+        sebab = _teks_gabung(t.get("sebab"))
+        if sebab:
+            if sebab.lower().startswith(("tidak ", "belum ")):
+                blok.append((sebab if sebab.endswith(".") else sebab + ".", False))
+            else:
+                blok.append((f"Hal tersebut disebabkan {_kecilkan_awal(sebab)}", False))
+        akibat = _teks_gabung(t.get("akibat"))
+        if akibat:
+            blok.append((f"Hal tersebut mengakibatkan {_kecilkan_awal(akibat)}", False))
+    return blok
+
+
+def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str,
+                    args: dict | None = None, catatan_judul: list[str] | None = None,
+                    rekom_texts: list[str] | None = None,
+                    temuan_disetujui: list[dict] | None = None) -> list[str]:
+    """Tambal cacat reviu-rka-kl + isi Ringkasan Eksekutif & Dasar Hukum. Return peringatan."""
     peringatan: list[str] = []
     doc = Document(str(docx_path))
     berubah = False
+    args = args or {}
+    peringatan: list[str] = []
+
+    # Ringkasan Eksekutif & Dasar Hukum — penanda app di luar pengetahuan V6.
+    from app.lhr_narasi import _parse_context
+    ctx = _parse_context(folder / "context.md")
+    judul = (args.get("judul") or "Reviu RKA-K/L").strip()
+    blok_re = _blok_ringkasan_rkakl(judul, catatan_judul or [], rekom_texts or [])
+    if _isi_penanda_paragraf(doc, "{{RINGKASAN_EKSEKUTIF}}", blok_re):
+        berubah = True
+    elif _isi_setelah_judul(doc, "Ringkasan Eksekutif", blok_re):
+        # V6 mengosongkan penanda RINGKASAN_EKSEKUTIF sebagai jaring pengaman
+        # sebelum menyimpan, jadi penandanya kerap sudah hilang di sini.
+        berubah = True
+    else:
+        peringatan.append("WARNING:Ringkasan Eksekutif gagal diisi (penanda maupun "
+                          "judul babnya tidak ditemukan)")
+    nota = (args.get("dasar_permintaan") or ctx.get("dasar") or "").strip()
+    if _isi_penanda_paragraf(
+        doc, "{{DASAR_HUKUM_LIST}}",
+        _blok_dasar_hukum_rkakl(ctx.get("nomor_st") or "", ctx.get("tanggal_st") or "", nota),
+    ):
+        berubah = True
+
+    # Uraian Hasil Reviu — daftar catatan LANGSUNG (tanpa pengelompokan aspek C1–C6).
+    # Penanda dulu; bila V6 sudah mengosongkannya, sandar pada judul bab.
+    aspek_buntu = _aspek_tak_tersimpulkan(folder)
+    blok_hasil = (_blok_hasil_reviu_rkakl(temuan_disetujui or [])
+                  + _blok_batas_cakupan(aspek_buntu))
+    if _isi_penanda_paragraf(doc, "{{HASIL_REVIU_LIST}}", blok_hasil):
+        berubah = True
+    elif _isi_setelah_judul(doc, "Uraian Hasil Reviu", blok_hasil):
+        berubah = True
+    else:
+        peringatan.append("WARNING:Uraian Hasil Reviu gagal diisi (penanda maupun "
+                          "judul babnya tidak ditemukan)")
+
+    # Simpulan tidak boleh berbunyi seolah reviu tuntas bila ada aspek yang
+    # belum dapat disimpulkan — itu memberi keyakinan yang tidak pernah diperoleh.
+    if aspek_buntu:
+        n = len(aspek_buntu)
+        for par in doc.paragraphs:
+            t = par.text.strip()
+            if t.startswith("Berdasarkan reviu yang telah dilaksanakan") and t.endswith("."):
+                _set_para(par, t[:-1] + (
+                    f", serta {n} ({_terbilang(n)}) aspek yang belum dapat disimpulkan "
+                    f"karena keterbatasan data sebagaimana diuraikan pada bab Uraian "
+                    f"Hasil Reviu. Atas aspek-aspek tersebut Inspektorat II tidak "
+                    f"memberikan keyakinan."))
+                berubah = True
+                break
 
     # Gambaran Umum: V6 membacanya dari `gambaran_umum_rkakl` yang tak pernah
     # ditulis siapa pun, sementara tulisan agen KT terbuang percuma.
@@ -1246,6 +1591,35 @@ def _betulkan_rkakl(docx_path: Path, folder: Path, gambaran_umum: str) -> list[s
                 f"WARNING:{n} sub-bab aspek RKA-K/L tidak dapat disimpulkan — "
                 f"{len(temuan)} temuan tidak punya field `area` (c1..c6). Isi `area` "
                 f"tiap temuan lalu render ulang.")
+
+
+    # {{TAHUN_PKPT}} di surat pengantar tidak dikenali siapa pun sehingga tercetak
+    # mentah. Diisi dari tahun anggaran penugasan, atau tahun pada tanggal ST.
+    tahun = str(ctx.get("tahun_anggaran") or "").strip()
+    if not tahun:
+        m_th = re.search(r"(20\d{2})", str(ctx.get("tanggal_st") or ""))
+        tahun = m_th.group(1) if m_th else ""
+    for par in doc.paragraphs:
+        if "{{TAHUN_PKPT}}" in par.text:
+            if tahun:
+                _set_para(par, par.text.replace("{{TAHUN_PKPT}}", tahun))
+                berubah = True
+            else:
+                peringatan.append("WARNING:{{TAHUN_PKPT}} tak bisa diisi — "
+                                  "context.md tidak memuat Tahun Anggaran")
+
+    # Bab Metodologi terbit berbunyi "Pemantauan dilaksanakan ..." pada laporan
+    # REVIU: V6 memakai pembangun metodologi milik pemantauan untuk jalur ini.
+    for par in doc.paragraphs:
+        if par.text.strip().startswith("Pemantauan dilaksanakan melalui"):
+            _set_para(par, "Reviu dilaksanakan dengan menelaah dokumen Renja dan RKA-K/L "
+                           "beserta dokumen pendukungnya, yaitu Kerangka Acuan Kerja (TOR) "
+                           "dan Rincian Anggaran Biaya (RAB), serta konfirmasi kepada "
+                           "pihak terkait. Reviu memberikan keyakinan terbatas.")
+            berubah = True
+    # Terakhir: seragamkan bentuk badan laporan (Arial 12 / justify / 1,5).
+    if _seragamkan_badan_rkakl(doc, "Ringkasan Eksekutif", "Apresiasi"):
+        berubah = True
 
     if berubah:
         doc.save(str(docx_path))
@@ -1425,7 +1799,13 @@ async def _render_kksa(folder: Path, args: dict) -> dict:
         outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),
                       key=lambda f: f.stat().st_mtime)
         if outs:
-            for pesan in _betulkan_rkakl(outs[-1], folder, args.get("gambaran_umum") or ""):
+            from app.tools.kkp_tools import load_hitl_annotations
+            anotasi = await load_hitl_annotations(folder)
+            catatan_judul, rekom_texts = _kumpulkan_ringkasan_rkakl(folder, anotasi)
+            temuan_disetujui = _temuan_disetujui_rkakl(folder, anotasi)
+            for pesan in _betulkan_rkakl(outs[-1], folder,
+                                         args.get("gambaran_umum") or "", args,
+                                         catatan_judul, rekom_texts, temuan_disetujui):
                 warn_d += f"|{pesan}"
 
     outs = sorted((folder / "_LHP").glob("LHP-SUBSTANSI*.docx"),

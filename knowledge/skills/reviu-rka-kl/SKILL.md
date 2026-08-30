@@ -190,43 +190,44 @@ Rekomendasi: [Tindakan konkret: sesuaikan dengan SBM, lengkapi KAK,
 
 ## Format Output Laporan (LHR RKA-K/L)
 
+> Bentuk mengikuti LHR resmi Inspektorat II: kop + Nota Dinas + surat pengantar,
+> lalu judul bab DATAR (tanpa penomoran A/B/C). Ringkasan Eksekutif & Dasar Hukum
+> diisi otomatis lapisan app (penanda `{{RINGKASAN_EKSEKUTIF}}` & `{{DASAR_HUKUM_LIST}}`);
+> bab lain diisi oleh perender dari data reviu. Format: Arial 12, spasi 1,5, justify.
+
 ```
-A. PENDAHULUAN
-   1. Latar Belakang dan Dasar Hukum (Pasal 61 PMK 107/2024)
-   2. Tujuan Reviu (keyakinan terbatas, kepatuhan kaidah penganggaran)
-   3. Ruang Lingkup (tahap reviu, unit kerja, tahun anggaran, total pagu)
-   4. Metodologi (desk review — penelaahan dokumen RKA-K/L)
-   5. Jangka Waktu dan Komposisi Tim
+RINGKASAN EKSEKUTIF
+   [Pengantar RKA-K/L + kesimpulan. Bila ADA catatan: daftar catatan + rekomendasi
+    ringkas. Bila SUDAH SESUAI: pernyataan keyakinan terbatas yang bersih (lihat
+    Panduan Bahasa) — tanpa daftar catatan/rekomendasi.]
 
-B. GAMBARAN UMUM RKA-K/L
-   [Total pagu, jumlah Program/Kegiatan/Output, sumber dana,
-    perbandingan dengan pagu tahun sebelumnya jika relevan]
+DASAR HUKUM
+   [Daftar peraturan bernomor: PP 60/2008, PMK 107/2024, PMK 41/2026,
+    Nota Dinas, Surat Tugas]
 
-C. HASIL REVIU
-   C.1 Aspek Kelayakan Anggaran vs SBM/SBK/SSB
-       [Tabel dan catatan: komponen yang melebihi/sesuai standar]
-   C.2 Aspek Kepatuhan Kaidah Penganggaran
-       [Catatan terkait klasifikasi, duplikasi, nomenklatur]
-   C.3 Aspek Penandaan Anggaran
-       [Status penandaan per keluaran]
-   C.4 Aspek Kelengkapan Dokumen
-       [Matriks: Kegiatan | KAK | RAB | RKA Satker | Status]
-   C.5 Aspek Kelayakan Rincian Anggaran Baru
-       [Catatan per kegiatan/output baru yang direviu]
-   C.6 Aspek Pengalokasian Tematik
-       [Verifikasi pemenuhan alokasi tematik]
+TUJUAN REVIU        [keyakinan terbatas, kepatuhan kaidah penganggaran]
+RUANG LINGKUP REVIU [tahap reviu, unit kerja, tahun anggaran]
+METODOLOGI REVIU    [desk review — penelaahan dokumen RKA-K/L]
 
-   [Catatan reviu lengkap: Judul → Kondisi → Kriteria → Sebab → Akibat → Rekomendasi]
+GAMBARAN UMUM
+   [Total pagu, jumlah Program/Kegiatan/Output, sumber dana]
 
-D. SIMPULAN
-   [Keyakinan terbatas — lihat panduan bahasa di bawah]
+URAIAN HASIL REVIU  [daftar catatan LANGSUNG — tanpa pengelompokan aspek]
+   1. [Judul catatan] → Kondisi → Kriteria → Sebab → Akibat
+   2. [Judul catatan] → ...
+   [Rekomendasi TIDAK di sini — disusun di bab Rekomendasi. Bila tak ada catatan:
+    "tidak terdapat catatan yang perlu ditindaklanjuti".]
 
-E. REKOMENDASI
-   [Kompilasi rekomendasi, dikelompokkan per aspek dan prioritas]
-
-F. APRESIASI
-   [Hal-hal yang sudah baik — reviu ini preventif dan membangun]
+SIMPULAN            [keyakinan terbatas — lihat Panduan Bahasa]
+REKOMENDASI         [kompilasi rekomendasi]
+APRESIASI           [hal-hal yang sudah baik — reviu preventif & membangun]
 ```
+
+> Catatan bentuk: bagian **Uraian Hasil Reviu** disajikan sebagai **daftar catatan
+> langsung** (bernomor, mengalir K/K/S/A) — TANPA pengelompokan per aspek (C1–C6)
+> maupun per Direktorat→RO. Field `area` tidak lagi diperlukan untuk laporan. Yang
+> diubah hanya PENYAJIAN laporan (Ringkasan Eksekutif, judul bab datar, Dasar Hukum
+> sebagai daftar, Uraian Hasil Reviu datar) — bukan substansi penilaian.
 
 ### Panduan Bahasa LHR
 
